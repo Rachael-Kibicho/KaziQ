@@ -25,8 +25,8 @@ def save_picture(form_picture):
 @app.route('/home')
 @app.route('/')
 def home():
-    posts = Post.query.all()
-
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.order_by(Post.date_posted.asc()).paginate(page=page, per_page=3)
     return render_template('home.html', posts=posts, title='Home')
 
 
@@ -109,3 +109,14 @@ def new_post():
 def post(post_id):
     post = Post.query.get_or_404(post_id)
     return render_template('post.html', title=post.title, post=post)
+
+@app.route("/user/<string:username>")
+def user_posts(username):
+    page = request.args.get('page', 1, type=int)
+    user = User.query.filter_by(username=username).first_or_404()
+    posts = Post.query.filter_by(author=user)\
+            .order_by(Post.date_posted.asc())\
+            .paginate(page=page, per_page=3)
+
+    return render_template('user_posts.html', title=user.username, post=posts, user=user)
+
