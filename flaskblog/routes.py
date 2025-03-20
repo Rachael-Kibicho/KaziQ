@@ -1,11 +1,14 @@
 from flask import render_template, url_for, flash, redirect, request
 from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, PostForm
-from flaskblog import app, db, bcrypt
-from flaskblog.models import User, Post, db, posts
+from flaskblog import app, db, bcrypt, socketio
+from flaskblog.models import User, Post, Message, db, posts
 from flask_login import login_user, current_user, logout_user, login_required
 import os
 import secrets
 from PIL import Image
+from flask_socketio import SocketIO, join_room, leave_room, emit
+from flask_migrate import Migrate
+from datetime import datetime
 
 def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
@@ -26,7 +29,7 @@ def save_picture(form_picture):
 @app.route('/')
 def home():
     page = request.args.get('page', 1, type=int)
-    posts = Post.query.order_by(Post.date_posted.asc()).paginate(page=page, per_page=3)
+    posts = Post.query.order_by(Post.date_posted.asc()).paginate(page=page, per_page=4)
     return render_template('home.html', posts=posts, title='Home')
 
 
@@ -108,7 +111,7 @@ def new_post():
 @app.route("/post/<int:post_id>")
 def post(post_id):
     post = Post.query.get_or_404(post_id)
-    return render_template('post.html', title=post.title, post=post)
+    return render_template('post.html', title=post.title, posts=post)
 
 @app.route("/user/<string:username>")
 def user_posts(username):
@@ -116,7 +119,43 @@ def user_posts(username):
     user = User.query.filter_by(username=username).first_or_404()
     posts = Post.query.filter_by(author=user)\
             .order_by(Post.date_posted.asc())\
-            .paginate(page=page, per_page=3)
+            .paginate(page=page, per_page=4)
 
-    return render_template('user_posts.html', title=user.username, post=posts, user=user)
+    return render_template('user_posts.html', title=user.username, posts=posts, user=user)
 
+
+@app.route('/chat')
+@login_required
+def chat():
+    return render_template('chat.html')
+
+@app.route('/chat/<int:user_id>')
+@login_required
+def private_chat(user_id):
+    other_user = User.query.get_or_404(user_id)
+    messages = Message.query.filter(
+        ((Message.sender_id == current_user.id) & (Message.receiver_id == user_id))
+        |
+        ((Message.sender_id == user_id) & (Message.receiver_id == current_user.id))
+        ).order_by(Message.timestamp.asc()).all()
+
+    return render_template('private_chat.html', other_user=other_user, messages=messages)
+
+
+@socketio.on('private_message')
+def handle_private_message(data):
+    receiver_id = data['receiver_id']
+    message = data['message']
+    timestamp = datetime.utcnow().isoformat()
+
+    # Save the message to the database
+    new_message = Message(sender_id=current_user.id, receiver_id=receiver_id, content=message, timestamp=timestamp)
+    db.session.add(new_message)
+    db.session.commit()
+
+    # Emit the message to the receiver
+    emit('new_message', {
+        'sender': current_user.username,
+        'message': message,
+        'timestamp': timestamp
+    }, room=receiver_id)
