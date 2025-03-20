@@ -27,13 +27,14 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarToggle">
-                    <div class="navbar-nav mr-auto">
+                    <div class="navbar-nav mr-auto" id="navbar-nav">
                         <a class="nav-item nav-link" href="{{url_for('home')}}">Home</a>
                         <a class="nav-item nav-link" href="{{url_for('about')}}">About</a>
                         {% if current_user.is_authenticated %}
                         <a class="nav-item nav-link" href="{{url_for('new_post')}}">New Post</a>
                         <a class="nav-item nav-link" href="{{url_for('account')}}">Account</a>
                         <a class="nav-item nav-link" href="{{url_for('logout')}}">Logout</a>
+                        <img src="{{ url_for('static', filename='profile_pics/' + current_user.image_file) }}" alt="Profile" class="rounded-circle account-img">
                         {% else %}
                             <a class="nav-item nav-link" href="{{url_for('login')}}">Login</a>
                             <a class="nav-item nav-link" href="{{url_for('register')}}">Register</a>
