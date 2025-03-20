@@ -179,12 +179,18 @@ body {
     padding-bottom: 1px;
     margin-bottom: 4px;
     border-bottom: 1px solid #b3b1b1;
-      }
+  }
+
+  .article-metadata a{
+    color:  #9055A2;
+  }
 
   .article-metadata a:hover {
     color: #333;
-    text-decoration: none;
+    text-decoration:none;
   }
+
+
 
   .article-svg {
     width: 25px;
@@ -220,6 +226,12 @@ body {
 .media{
   width:418px;
   height:210px;
+  }
+
+.media:hover{
+  transform:scale(1.01);
+  transition-duration:0.3s;
+  box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
 }
 
 .message {
