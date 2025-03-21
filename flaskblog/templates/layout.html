@@ -19,6 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Itim&family=Pacifico&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Navigation bar -->
     <header class="site-header">
         <nav class="navbar navbar-expand-md" id="navbar">
             <div class="container">
@@ -44,7 +45,7 @@
             </div>
         </nav>
     </header>
-
+    <!-- Main content -->
     <main role="main" class="container mt-5 pt-5">
         <div class="row">
             <div class="content-container">
@@ -82,29 +83,6 @@
             <p>&copy; 2025 KaziQ</p>
         </div>
     </footer>
-
-    <!-- Blurring javascript -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const navbarToggler = document.querySelector('.navbar-toggler');
-            const navbarCollapse = document.querySelector('.navbar-collapse');
-
-            navbarToggler.addEventListener('click', function () {
-                // Toggle the 'navbar-open' class on the body
-                document.body.classList.toggle('navbar-open');
-            });
-
-            // Remove the blur effect when the menu is closed
-            navbarCollapse.addEventListener('hidden.bs.collapse', function () {
-                document.body.classList.remove('navbar-open');
-            });
-
-            navbarCollapse.addEventListener('shown.bs.collapse', function () {
-                document.body.classList.add('navbar-open');
-            });
-        });
-    </script>
-
     <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>

@@ -16,6 +16,7 @@ def save_picture(form_picture):
     picture_fn = random_hex + f_ext
     picture_path = os.path.join(app.root_path, 'static/profile_pics', picture_fn)
 
+    # Resize the image before saving it
     output_size = (125, 125)
     i = Image.open(form_picture)
     i.thumbnail(output_size)
@@ -23,6 +24,21 @@ def save_picture(form_picture):
 
     return picture_fn
 
+def save_post_image(form_image):
+    random_hex = secrets.token_hex(8)
+    _, f_ext = os.path.splitext(form_image.filename)
+    image_fn = random_hex + f_ext
+    image_path = os.path.join(app.root_path, 'static/post_images', image_fn)
+
+    # Resizing the image before saving it
+    output_size = (250, 250)
+    img = Image.open(form_image)
+    img.thumbnail(output_size)
+    img.save(image_path)
+
+    print("FormImage:", form_image)
+
+    return image_fn
 
 
 @app.route('/home')
@@ -101,7 +117,15 @@ def account():
 def new_post():
     form = PostForm()
     if form.validate_on_submit():
-        post = Post(title=form.title.data, content=form.content.data,author=current_user)
+        if form.image.data:
+            print("Image data received:", form.image.data)  # Debugging statement
+            image_file = save_post_image(form.image.data)
+            print("Image filename has been saved:", image_file)
+        else:
+            print("No image uploaded, sorry!")
+            image_file = None
+
+        post = Post(title=form.title.data, content=form.content.data,author=current_user, image_file=image_file)
         db.session.add(post)
         db.session.commit()
         flash('Your Post has been created successfully!', 'success')
@@ -110,8 +134,8 @@ def new_post():
 
 @app.route("/post/<int:post_id>")
 def post(post_id):
-    post = Post.query.get_or_404(post_id)
-    return render_template('post.html', title=post.title, posts=post)
+    posts = Post.query.get_or_404(post_id)
+    return render_template('post.html', title=posts.title, posts=posts)
 
 @app.route("/user/<string:username>")
 def user_posts(username):

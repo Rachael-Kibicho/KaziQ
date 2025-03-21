@@ -4,13 +4,16 @@
     <h1>Posts</h1>
     <article class="media content-section">
         <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + posts.author.image_file) }}">
-        <div class="media-body">
+        <div class="">
             <div class="article-metadata">
                 <a class="mr-2" href="{{ url_for('user_posts', username=posts.author.username) }}">{{ posts.author.username }}</a>
                 <small class="text-muted">{{ posts.date_posted.strftime('%Y-%m-%d') }}</small>
             </div>
             <h2><a class="article-title" href="{{ url_for('post', post_id=posts.id) }}">{{ posts.title }}</a></h2>
             <p class="article-content">{{ posts.content }}</p>
+            {% if posts.image_file %}
+            <img src="{{ url_for('static', filename='post_images/' + posts.image_file) }}" alt="{{ posts.title }}" class="card-image">
+            {% endif %}
         </div>
     </article>
 {% endblock %}
