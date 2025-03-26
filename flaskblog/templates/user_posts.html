@@ -1,7 +1,7 @@
 
 {% extends 'layout.html' %}
 {% block content %}
-    <h1 class="mb-3">Posts by {{user.username}}({{posts.total}})</h1>
+    <h3 class="mb-3">Posts by {{user.username}}({{posts.total}})</h3>
     <a href="{{ url_for('private_chat', user_id=user.id) }}">Chat with me</a>
 
     {% for post in posts.items%}

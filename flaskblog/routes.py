@@ -1,14 +1,17 @@
-from flask import render_template, url_for, flash, redirect, request
+import requests
+from flask import render_template, url_for, flash, redirect, request, jsonify, abort
+from stream_chat import StreamChat
 from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, PostForm
-from flaskblog import app, db, bcrypt, socketio
-from flaskblog.models import User, Post, Message, db, posts
+from flaskblog import app, db, bcrypt, STREAM_API_KEY, STREAM_API_SECRET
+from flaskblog.models import User, Post, CartItem, db, posts
 from flask_login import login_user, current_user, logout_user, login_required
 import os
 import secrets
 from PIL import Image
-from flask_socketio import SocketIO, join_room, leave_room, emit
 from flask_migrate import Migrate
 from datetime import datetime
+
+#HTML routes
 
 def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
@@ -135,7 +138,8 @@ def new_post():
 @app.route("/post/<int:post_id>")
 def post(post_id):
     posts = Post.query.get_or_404(post_id)
-    return render_template('post.html', title=posts.title, posts=posts)
+    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+    return render_template('post.html', title=posts.title, posts=posts, cart_items=cart_items)
 
 @app.route("/user/<string:username>")
 def user_posts(username):
@@ -148,38 +152,94 @@ def user_posts(username):
     return render_template('user_posts.html', title=user.username, posts=posts, user=user)
 
 
-@app.route('/chat')
+#CHAT ROUTES
+
+@app.route('/generate-stream-token')
 @login_required
-def chat():
-    return render_template('chat.html')
+def generate_stream_token():
+    user_id = str(current_user.id)
+    token = client.create_token(user_id)
+    return jsonify({"token": token})
+
+# Initialize Stream Chat
+client = StreamChat(api_key=str(STREAM_API_KEY), api_secret=str(STREAM_API_SECRET))
 
 @app.route('/chat/<int:user_id>')
 @login_required
 def private_chat(user_id):
     other_user = User.query.get_or_404(user_id)
-    messages = Message.query.filter(
-        ((Message.sender_id == current_user.id) & (Message.receiver_id == user_id))
-        |
-        ((Message.sender_id == user_id) & (Message.receiver_id == current_user.id))
-        ).order_by(Message.timestamp.asc()).all()
+    channel_id = f"{min(current_user.id, user_id)}-{max(current_user.id, user_id)}"
 
-    return render_template('private_chat.html', other_user=other_user, messages=messages)
+    try:
+        channel = client.channel("messaging", channel_id)
+        channel_state = channel.query()
+        #Ensure the channel is set up with an owner
+        channel.update({"created_by_id": str(current_user.id)})
+    except Exception as e:
+        channel = client.channel("messaging", channel_id, {
+            "created_by_id": str(current_user.id)
+        })
+        channel.create(current_user.id)
+
+    return render_template('private_chat.html',
+        title='Chat',
+        other_user=other_user,
+        stream_api_key=STREAM_API_KEY,
+        channel_id=channel_id,
+    )
+
+@app.route("/get_channel")
+def get_channel():
+    headers = {"Authorization": "Bearer YOUR_STREAM_API_SECRET"}
+    response = requests.get("https://chat.stream-io-api.com/some-endpoint", headers=headers)
+    return response.json()
+
+# SEARCH ROUTE
+
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('query')  # Get the search query from the URL
+    if not query:
+        return redirect(url_for('home'))  # Redirect to home if no query is provided
+
+    # Perform a database search (example: searching posts by title)
+    results = Post.query.filter(Post.title.ilike(f"%{query}%")).all()
+
+    return render_template('search_results.html', query=query, results=results)
 
 
-@socketio.on('private_message')
-def handle_private_message(data):
-    receiver_id = data['receiver_id']
-    message = data['message']
-    timestamp = datetime.utcnow().isoformat()
+@app.route('/add_to_cart/<int:post_id>', methods=['POST'])
+@login_required
+def add_to_cart(post_id):
+    post = Post.query.get_or_404(post_id)
+    cart_item = CartItem.query.filter_by(user_id=current_user.id, post_id=post.id).first()
 
-    # Save the message to the database
-    new_message = Message(sender_id=current_user.id, receiver_id=receiver_id, content=message, timestamp=timestamp)
-    db.session.add(new_message)
+    if cart_item:
+        cart_item.quantity += 1
+    else:
+        cart_item = CartItem(user_id=current_user.id, post_id=post.id)
+        db.session.add(cart_item)
+
     db.session.commit()
+    flash(f"Added {post.title} to your cart!", "success")
+    return redirect(url_for('home', post_id=post.id))
 
-    # Emit the message to the receiver
-    emit('new_message', {
-        'sender': current_user.username,
-        'message': message,
-        'timestamp': timestamp
-    }, room=receiver_id)
+
+@app.route('/cart')
+@login_required
+def view_cart():
+    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+    return render_template('cart.html', title='Your Cart', cart_items=cart_items)
+
+@app.route('/remove_from_cart/<int:item_id>', methods=['POST'])
+@login_required
+def remove_from_cart(item_id):
+    cart_item = CartItem.query.get_or_404(item_id)
+
+    if cart_item.user_id != current_user.id:
+        abort(403)  # Prevent unauthorized access
+
+    db.session.delete(cart_item)
+    db.session.commit()
+    flash("Item removed from your cart.", "success")
+    return redirect(url_for('view_cart'))

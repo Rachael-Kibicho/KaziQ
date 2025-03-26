@@ -1,13 +1,17 @@
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_login import login_user, current_user, logout_user, login_required
 
 # Initialize SocketIO
 socketio = SocketIO()
 
 def register_socket_handlers(app):
     """Register all the Socket.IO event handlers."""
-    @socketio.on('connect')
+    @socketio.on("connect")
+    @login_required
     def handle_connect():
-        print("Client connected")
+        join_room(str(current_user.id))
+        print(f"{current_user.username} connected to room {current_user.id}")
+
 
     @socketio.on('disconnect')
     def handle_disconnect():

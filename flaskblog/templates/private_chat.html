@@ -1,15 +1,9 @@
-
 {% extends "layout.html" %}
 {% block content %}
     <div class="chat-container">
         <h2>Chat with {{ other_user.username }}</h2>
         <div id="chat-messages">
-            {% for message in messages %}
-            <div class="message {% if message.sender_id == current_user.id %}sent{% else %}received{% endif %}">
-                <p>{{ message.content }}</p>
-                <small>{{ message.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
-            </div>
-            {% endfor %}
+
         </div>
         <form id="message-form">
             <input type="text" id="message-input" placeholder="Type your message...">
@@ -29,41 +23,154 @@
         {% endfor %}
     </ul>
 
+    <script type="module">
+        import { StreamChat } from "https://esm.sh/stream-chat@6.3.0";
 
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script>
-        const socket = io.connect('http://' + document.domain + ':' + location.port);
-        const userId = "{{ current_user.id }}";
-        const receiverId = "{{ other_user.id }}";
+        const streamChat = StreamChat.getInstance("{{ stream_api_key }}");
+        console.log("StreamChat loaded successfully:", StreamChat.version);
 
-        // Message form submission
-        document.getElementById('message-form').onsubmit = function(e) {
-            e.preventDefault();
-            const messageInput = document.getElementById('message-input');
-            const message = messageInput.value.trim();
+        fetch('/generate-stream-token')
+            .then(response => response.json())
+            .then(async (data) => {
+                try {
+                    await streamChat.setUser(
+                        {
+                            id: "{{ current_user.id }}",
+                            name: "{{ current_user.username }}",
+                            image: "{{ url_for('static', filename='profile_pics/' + current_user.image_file) }}"
+                        },
+                        data.token
+                    );
 
-            if(message) {
-                socket.emit('private_message', {
-                    receiver_id: receiverId,
-                    message: message
-                });
-                messageInput.value = '';
-            }
-        };
+                    const channelId = "{{ channel_id }}";
+                    const channel = streamChat.channel("messaging", channelId);
+                    await channel.watch();
 
-        // Receive new messages
-        socket.on('new_message', function(data) {
-            const messagesDiv = document.getElementById('chat-messages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${data.sender === "{{ current_user.username }}" ? 'sent' : 'received'}`;
+                    const messagesDiv = document.getElementById('chat-messages');
+                    console.log("Messages Div:", messagesDiv);
 
-            messageDiv.innerHTML = `
-                <p>${data.message}</p>
-                <small>${new Date(data.timestamp).toLocaleString()}</small>
-            `;
+                    // Load existing messages
+                    console.log("Existing Messages:", channel.state.messages);
+                    channel.state.messages.forEach((message) => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = `message ${message.user.id === "{{ current_user.id }}" ? 'sent' : 'received'}`;
+                        messageDiv.innerHTML = `
+                            <p>${message.text}</p>
+                            <small>${new Date(message.created_at).toLocaleString()}</small>
+                        `;
+                        messagesDiv.appendChild(messageDiv);
+                    });
 
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
+                    // Send messages
+                    document.getElementById('message-form').onsubmit = async (e) => {
+                        e.preventDefault();
+                        const messageInput = document.getElementById('message-input');
+                        const messageText = messageInput.value.trim();
+                        if (messageText) {
+                            const newMessage = await channel.sendMessage({ text: messageText });
+                            console.log("New Message:", newMessage);
+
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = `message sent`;
+                            messageDiv.innerHTML = `
+                                <p>${newMessage.message.text}</p>
+                                <small>${new Date(newMessage.message.created_at).toLocaleString()}</small>
+                            `;
+                            messagesDiv.appendChild(messageDiv);
+                            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                            messageInput.value = '';
+                        }
+                    };
+
+                } catch (error) {
+                    console.error("Error within the fetch success callback:", error);
+                }
+            })
+            .catch((error) => {
+        console.error('Error initializing Stream Chat:', error);
+    });
+
+    // ✅ Ensure event listener is added only once
+    streamChat.on('message.new', (event) => {
+        console.log("New message received:", event);
+
+        const messagesDiv = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${event.message.user.id === "{{ current_user.id }}" ? 'sent' : 'received'}`;
+        messageDiv.innerHTML = `
+            <p>${event.message.text}</p>
+            <small>${new Date(event.message.created_at).toLocaleString()}</small>
+        `;
+
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
     </script>
+
+    <style>
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #chat-messages {
+            height: 60vh;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+        }
+
+        .message.sent {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.received {
+            background: #e9ecef;
+            margin-right: auto;
+        }
+
+        .message small {
+            display: block;
+            margin-top: 5px;
+            opacity: 0.8;
+            font-size: 0.8em;
+        }
+
+        #message-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #message-form button {
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
 {% endblock %}

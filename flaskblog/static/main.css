@@ -105,6 +105,10 @@ body {
     border:none;
   }
 
+  .navbarToggle{
+    display:flex;
+  }
+
 
   .navbar-toggler-icon {
       background-image: none; /* Remove the default icon */
@@ -131,6 +135,16 @@ body {
       box-shadow: 0 6px 0 #fff, 0 12px 0 #fff; /* Create 3 lines */
   }
 
+  #account-img{
+    height:40px;
+    width:40px;
+
+
+  }
+
+  #account-img{
+    text-align:center;
+  }
 
   /* Blur effect to the body when the navbar is toggled */
   body.navbar-open {
@@ -155,9 +169,10 @@ body {
 
   .content-section {
     background: whitesmoke;
-    padding: 10px 20px;
+    padding: 10px 30px;
     border: none;
     border-radius: 1em;
+    height:600px;
   }
 
   content-section:hover{
@@ -231,7 +246,6 @@ body {
   .chat-container {
     max-width: 800px;
     margin: 20px auto;
-    border: 1px solid #ddd;
     padding: 20px;
 }
 
@@ -241,12 +255,15 @@ body {
     border: 1px solid #eee;
     padding: 10px;
     margin-bottom: 20px;
+    border-radius:2em;
+    width:500px;
 }
 
  /* the widget styling is here */
 .media{
   width:418px;
   height:210px;
+  padding:10px;
   }
 
 .media:hover{
@@ -262,13 +279,20 @@ body {
 }
 
 .message.sent {
-    background-color: #e3f2fd;
+    background-color: #1b5a86;
     margin-left: 20%;
+    height:100%;
+    width:100%;
+    color:whitesmoke;
+    font-size:2rem;
+    text-align:center;
 }
 
 .message.received {
     background-color: #f5f5f5;
     margin-right: 20%;
+    height:100%;
+    width:100%;
 }
 
 
@@ -286,21 +310,34 @@ footer{
   text-shadow: 2px 2px 4px #011638;
 }
 
+
 /* these two stylings for the post image are not working, why? */
 .post-image{
   width:100%;
-  height:100%;
+  height:120px;
   border-radius:1em;
-  background-color:#9055A2;
+  display:flex;
+  justify-content:center;
+  align-items:center;
 }
 
 .card-image {
-  width: 100%;
-  height: 100px;
-  border-radius: 1em;
+  width: 50%;
+  height: 150px;
+  border-radius: 2em;
   border:none;
   margin-bottom: 10px;
   padding:1em;
+
+}
+
+
+#search-results{
+  margin:-35px auto;
+}
+
+.search-div h3{
+  margin-bottom:40px;
 }
 
 .sidebar {
