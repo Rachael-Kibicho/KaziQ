@@ -1,25 +1,28 @@
 
 {% extends 'layout.html' %}
 {% block content %}
+    <div class="post-container">
     <h3>Posts</h3>
     <article class="media content-section">
-        <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + posts.author.image_file) }}">
-        <div class="">
-            <div class="article-metadata">
-                <a class="mr-2" href="{{ url_for('user_posts', username=posts.author.username) }}">{{ posts.author.username }}</a>
-                <small class="text-muted">{{ posts.date_posted.strftime('%Y-%m-%d') }}</small>
+        <a href="{{ url_for('post', post_id=posts.id) }}" class="inner-content-section-link">
+          <div class="inner-content-section">
+            <div class="inner-content-section-metadata">
+              <h5><a class="article-title" href="{{ url_for('post', post_id=posts.id)}}">{{ posts.title }}</a></h5>
+              <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + posts.author.image_file) }}">
+                <div class="media-body">
+                  <div class="article-metadata">
+                    <a class="mr-2 username" href="{{url_for('user_posts', username=posts.author.username)}}">{{ posts.author.username }}</a>
+                  </div>
+                </div>
             </div>
-            <h2><a class="article-title" href="{{ url_for('post', post_id=posts.id) }}">{{ posts.title }}</a></h2>
-            <p class="article-content">{{ posts.content }}</p>
-            <div class="post-image">
-                {% if posts.image_file %}
-                <img src="{{ url_for('static', filename='post_images/' + posts.image_file) }}" alt="{{ posts.title}}" class="card-image">
-                {% endif %}
+            <div class="post-image-container">
+              {% if posts.image_file %}
+              <img src="{{ url_for('static', filename='post_images/' + posts.image_file) }}" alt="{{ posts.title}}" class="card-image">
+              {% endif %}
             </div>
-            <form action="{{ url_for('add_to_cart', post_id=posts.id) }}" method="POST">
-                <button type="submit">Add to Cart</button>
-            </form>
+          </div>
+        </a>
+      </article>
+    </div>
 
-        </div>
-    </article>
 {% endblock %}

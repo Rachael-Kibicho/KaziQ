@@ -63,7 +63,7 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+        user = User(username=form.username.data, email=form.email.data, whatsapp=form.whatsapp, password=hashed_password)
         db.session.add(user)
         db.session.commit()
         flash(f'Account created for {form.username.data}!', 'success')
@@ -205,7 +205,7 @@ def search():
     # Perform a database search (example: searching posts by title)
     results = Post.query.filter(Post.title.ilike(f"%{query}%")).all()
 
-    return render_template('search_results.html', query=query, results=results)
+    return render_template('search_results.html', title='Search', query=query, results=results)
 
 
 @app.route('/add_to_cart/<int:post_id>', methods=['POST'])

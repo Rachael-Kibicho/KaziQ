@@ -8,6 +8,7 @@ from flask_login import current_user
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email',validators=[DataRequired(), Email()])
+    whatsapp = StringField('Whatsapp Number', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
     confirm_password = PasswordField('Confirm Password', validators = [DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
@@ -47,9 +48,8 @@ class UpdateAccountForm(FlaskForm):
                 raise ValidationError('Email already taken, please choose another one')
 
 class PostForm(FlaskForm):
-    title = StringField('Title', validators=[DataRequired()])
-    content = StringField('Content', validators=[DataRequired()])
-    image = FileField('Upload Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
-    submit = SubmitField('Post')
-
-    
+    title = StringField('Title of your Post', validators=[DataRequired()])
+    content = StringField('Content of your Post', validators=[DataRequired()])
+    price = StringField('Price per Unit', validators=[DataRequired()])
+    image = FileField('Upload your Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
+    submit = SubmitField('Send your Post')

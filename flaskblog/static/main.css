@@ -18,6 +18,38 @@ body {
     background-color: #5f788a;
   }
 
+  .search-form{
+    width: 150px;
+    height:150px;
+    margin: -2px 0 0 0;
+    display:flex;
+    justify-content:start;
+    align-items:start;
+    flex-direction:column;
+  }
+
+  .search-form input{
+    width: 150px;
+    height: 50px;
+    border-radius: 1em;
+    border:none;
+    margin: 0 0 10px 0;
+    padding:10px 20px;
+    text-align:start;
+  }
+
+  .search-form button{
+    width: 150px;
+    height: 30px;
+    border-radius: 1em;
+    border:none;
+    background-color:#9055A2;
+    color:#ffffff;
+    font-weight: 400;
+    font-style: normal;
+    text-align:center;
+  }
+
   .site-header .navbar-nav .nav-link {
     color:#011638;
     background-color:#D9D9D9;
@@ -169,16 +201,35 @@ body {
 
   .content-section {
     background: whitesmoke;
-    padding: 10px 30px;
     border: none;
     border-radius: 1em;
     height:600px;
   }
 
-  content-section:hover{
+  .content-section:hover{
     background-color:#ffffff;
     transition-duration:0.3s;
   }
+
+  .inner-content-section{
+    display:flex;
+    align-items:start;
+  }
+
+  .inner-content-section-metadata{
+    display:flex;
+    justify-content:center;
+    align-items: flex-start;
+    flex-direction:column;
+    width:150px;
+  }
+
+  .inner-content-section-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
 
   .actual-content{
     border: none;
@@ -193,6 +244,9 @@ body {
 
   .article-title {
     color: #2E294E;
+    border-bottom: 1px solid #b3b1b1;
+    margin-bottom:10px;
+
   }
 
   a.article-title:hover {
@@ -207,13 +261,14 @@ body {
   .article-img {
     height: 65px;
     width: 65px;
-    margin-right: 16px;
   }
 
   .article-metadata {
     padding-bottom: 1px;
     margin-bottom: 4px;
-    border-bottom: 1px solid #b3b1b1;
+    height:20px;
+    display:flex;
+    justify-content:center;
   }
 
   .article-metadata a{
@@ -275,7 +330,7 @@ body {
 .message {
     margin: 10px 0;
     padding: 10px;
-    border-radius: 5px;
+    border-radius: 2em;
 }
 
 .message.sent {
@@ -295,6 +350,13 @@ body {
     width:100%;
 }
 
+.form{
+  margin: -19px 0 0 0;
+}
+
+.form-group .btn-outline-info{
+  margin-top:-5px;
+}
 
 footer{
   display:flex;
@@ -311,23 +373,25 @@ footer{
 }
 
 
-/* these two stylings for the post image are not working, why? */
-.post-image{
-  width:100%;
-  height:120px;
+/* these are the two stylings for the post image */
+.post-image-container{
+  width:250px;
+  height:200px;
   border-radius:1em;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  background-color:#D9D9D9;
+  margin: -5px -10px 0 3px;
+}
+
+.post-container{
+  display:block;
 }
 
 .card-image {
-  width: 50%;
-  height: 150px;
-  border-radius: 2em;
+  width: 100%;
+  height: 100%;
+  border-radius: 1em;
   border:none;
-  margin-bottom: 10px;
-  padding:1em;
+
 
 }
 
