@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="inbox-container">
+        <h2>Chat Inbox</h2>
+        <div class="chat-list">
+            {% for channel in channels %}
+                {% set members = channel.state.members %}
+                {% set other_user = members | selectattr('user_id', '!=', current_user.id) | first %}
+                {% if other_user %}
+                    <div class="chat-item">
+                        <a href="{{ url_for('private_chat', user_id=other_user.user_id) }}">
+                            <div class="chat-item-header">
+                                <img src="{{ url_for('static', filename='profile_pics/' + other_user.image) }}"
+                                     alt="Profile Picture" class="chat-avatar">
+                                <div class="chat-info">
+                                    <h4>{{ other_user.name }}</h4>
+                                    {% if channel.state.last_message %}
+                                        <p class="last-message">
+                                            {{ channel.state.last_message.text | truncate(30) }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

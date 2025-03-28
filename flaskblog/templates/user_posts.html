@@ -1,35 +1,67 @@
 
 {% extends 'layout.html' %}
+{% block body_content %}
+
+  <h4 class="user-post-title">Posts by {{ user.username }} ({{ posts.total }})</h4>
+
+{% endblock %}
+
 {% block content %}
-    <h3 class="mb-3">Posts by {{user.username}}({{posts.total}})</h3>
-    <a href="{{ url_for('private_chat', user_id=user.id) }}">Chat with me</a>
-
+  <div class="actual-content">
     {% for post in posts.items%}
-
       <article class="media content-section">
-        <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + post.author.image_file) }}">
-          <div class="media-body">
-            <div class="article-metadata">
-              <a class="mr-2" href="{{url_for('user_posts', username=post.author.username)}}">{{ post.author.username }}</a>
-              <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
+        <a href="{{ url_for('post', post_id=post.id) }}" class="inner-content-section-link">
+          <div class="inner-content-section">
+            <div class="inner-content-section-metadata">
+              <h5><a class="article-title" href="{{ url_for('post', post_id=post.id)}}">{{ post.title }}</a></h5>
+              <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + post.author.image_file) }}">
+                <div class="media-body">
+                  <div class="article-metadata">
+                    <a class="mr-2 username" href="{{url_for('user_posts', username=post.author.username)}}">{{ post.author.username }}</a>
+                  </div>
+                </div>
             </div>
-            <h3><a class="article-title" href="{{ url_for('post', post_id=post.id)}}">{{ post.title }}</a></h3>
-            <p class="article-content">{{ post.content }}</p>
+            <div class="post-image-container">
+              {% if post.image_file %}
+              <img src="{{ url_for('static', filename='post_images/' + post.image_file) }}" alt="{{ post.title}}" class="card-image">
+              {% endif %}
+            </div>
           </div>
+        </a>
       </article>
     {% endfor %}
-    <div class="pagination">
-      {% for page_num in posts.iter_pages(left_edge=1, left_current=1, right_edge=1, right_current=2) %}
-        {% if page_num %}
-          {% if posts.page == page_num %}
-            <a class="btn btn-info mb-4" href="{{ url_for('home', page=page_num) }}">{{ page_num }}</a>
-          {% else %}
-            <a class="btn btn-outline-info mb-4" href="{{ url_for('home', page=page_num) }}">{{ page_num }}</a>
-          {% endif %}
-        {% else %}
-          <span class="btn btn-outline-secondary mb-4">...</span>
-        {% endif %}
-      {% endfor %}
   </div>
 
+{% endblock %}
+{% block sidebar %}
+    <div class="search">
+      <form action="{{ url_for('search') }}" method="GET" class="search-form d-flex">
+        <div class="input-group">
+          <input type="text" name="query" class="form-control" placeholder="Book..." required>
+          <button type="submit" class="btn btn-outline-secondary">
+            <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+          </button>
+        </div>
+      </form>
+    </div>
+    <a href="{{ url_for('private_chat', user_id=user.id) }}" class="btn btn-primary chat-btn">Chat with {{ user.username }}</a>
+
+    <!--
+    <a href="https://wa.me/{{ user.whatsapp }}" target="_blank" class="btn btn-success whatsapp-btn">
+      <i class="fab fa-whatsapp"></i> Chat on WhatsApp
+    </a> -->
+    
+    <div class="pagination">
+      {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+      {% if page_num %}
+        {% if posts.page == page_num %}
+          <a class="btn btn-info mb-4" href="{{ url_for('user_posts', username=user.username, page=page_num) }}">{{ page_num }}</a>
+        {% else %}
+          <a class="btn btn-outline-info mb-4" href="{{ url_for('user_posts', username=user.username, page=page_num) }}">{{ page_num }}</a>
+        {% endif %}
+      {% else %}
+        ...
+      {% endif %}
+      {% endfor %}
+    </div>
 {% endblock %}

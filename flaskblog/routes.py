@@ -2,8 +2,8 @@ import requests
 from flask import render_template, url_for, flash, redirect, request, jsonify, abort
 from stream_chat import StreamChat
 from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, PostForm
-from flaskblog import app, db, bcrypt, STREAM_API_KEY, STREAM_API_SECRET
-from flaskblog.models import User, Post, CartItem, db, posts
+from flaskblog import app, db, bcrypt, STREAM_API_KEY, STREAM_API_SECRET, socketio, emit
+from flaskblog.models import User, Post, CartItem, Notification, db
 from flask_login import login_user, current_user, logout_user, login_required
 import os
 import secrets
@@ -12,6 +12,13 @@ from flask_migrate import Migrate
 from datetime import datetime
 
 #HTML routes
+
+#A few useful functions to be used in the routes
+
+def admin_required():
+    if not current_user.is_authenticated or not current_user.is_admin:
+        abort(403)
+
 
 def save_picture(form_picture):
     random_hex = secrets.token_hex(8)
@@ -63,10 +70,10 @@ def register():
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, email=form.email.data, whatsapp=form.whatsapp, password=hashed_password)
+        user = User(username=form.username.data, email=form.email.data, whatsapp=str(form.whatsapp), password=hashed_password)
         db.session.add(user)
         db.session.commit()
-        flash(f'Account created for {form.username.data}!', 'success')
+        flash(f'Account created for "{form.username.data}!", "success"')
         return redirect(url_for('home'))
     return render_template('register.html', title='Register', form=form)
 
@@ -128,7 +135,7 @@ def new_post():
             print("No image uploaded, sorry!")
             image_file = None
 
-        post = Post(title=form.title.data, content=form.content.data,author=current_user, image_file=image_file)
+        post = Post(title=form.title.data, content=form.content.data,price=form.price.data, author=current_user, image_file=image_file)
         db.session.add(post)
         db.session.commit()
         flash('Your Post has been created successfully!', 'success')
@@ -167,26 +174,58 @@ client = StreamChat(api_key=str(STREAM_API_KEY), api_secret=str(STREAM_API_SECRE
 @app.route('/chat/<int:user_id>')
 @login_required
 def private_chat(user_id):
+    # Get the other user from the database
     other_user = User.query.get_or_404(user_id)
+
+    # Create a unique channel ID for the chat
     channel_id = f"{min(current_user.id, user_id)}-{max(current_user.id, user_id)}"
 
-    try:
-        channel = client.channel("messaging", channel_id)
-        channel_state = channel.query()
-        #Ensure the channel is set up with an owner
-        channel.update({"created_by_id": str(current_user.id)})
-    except Exception as e:
-        channel = client.channel("messaging", channel_id, {
-            "created_by_id": str(current_user.id)
-        })
-        channel.create(current_user.id)
+    # Create or get the Stream Chat channel
+    channel = client.channel("messaging", channel_id, {
+        "created_by_id": str(current_user.id)
+    })
 
-    return render_template('private_chat.html',
-        title='Chat',
+    try:
+        # Query the channel to fetch its state and messages
+        channel_state = channel.query()
+        messages = channel_state["messages"]  # Retrieve all messages from the channel
+
+    except Exception as e:
+        # If the channel doesn't exist, create it
+        channel.create({"created_by_id": str(current_user.id)})
+        messages = []  # No messages yet in a newly created channel
+
+    return render_template(
+        'private_chat.html',
         other_user=other_user,
         stream_api_key=STREAM_API_KEY,
         channel_id=channel_id,
+        messages=messages
     )
+
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    # Example logic for fetching notifications
+    user_notifications = [
+        {"message": "Someone wants to chat!"}
+    ]
+    return jsonify(user_notifications)
+
+
+@app.route('/stream-webhook', methods=['POST'])
+def stream_webhook():
+    data = request.json
+
+    if data.get("type") == "message.new":
+        recipient_id = data["user"]["id"]
+        message_text = data["text"]
+
+        send_push_notification(recipient_id, f"New message: {message_text}")
+
+    return jsonify({"success": True})
+
 
 @app.route("/get_channel")
 def get_channel():
@@ -208,7 +247,7 @@ def search():
     return render_template('search_results.html', title='Search', query=query, results=results)
 
 
-@app.route('/add_to_cart/<int:post_id>', methods=['POST'])
+@app.route('/add_to_cart/<int:post_id>', methods=['GET','POST'])
 @login_required
 def add_to_cart(post_id):
     post = Post.query.get_or_404(post_id)
@@ -221,8 +260,8 @@ def add_to_cart(post_id):
         db.session.add(cart_item)
 
     db.session.commit()
-    flash(f"Added {post.title} to your cart!", "success")
-    return redirect(url_for('home', post_id=post.id))
+    flash(f"Added '{post.title}!' to your cart!", "success")
+    return redirect(url_for('view_cart', post_id=post.id))
 
 
 @app.route('/cart')
@@ -243,3 +282,55 @@ def remove_from_cart(item_id):
     db.session.commit()
     flash("Item removed from your cart.", "success")
     return redirect(url_for('view_cart'))
+
+
+# Report generation routes
+#report for registered businsesses
+@app.route('/report/registered_businesses')
+@login_required
+def registered_businesses_report():
+    admin_required()  # Restrict access to admins
+    users = User.query.all()
+    return render_template('registered_business_report.html', users=users)
+
+#Report for messaging activity
+
+@app.route('/report/chat_activity')
+@login_required
+def chat_activity_report():
+    if not current_user.is_authenticated or not current_user.is_admin:  # Optional: Restrict access to admins
+        abort(403)
+
+    # Fetch total messages sent by each user
+    messages_report = db.session.query(
+        User.username,
+        db.func.count(Notification.id).label('total_notifications')
+    ).outerjoin(Notification, Notification.user_id == User.id) \
+     .group_by(User.id).all()
+
+    # Fetch total private chats initiated by each user
+    private_chats_report = db.session.query(
+        User.username,
+        db.func.count(CartItem.id).label('total_private_chats')
+    ).join(CartItem, CartItem.user_id == User.id) \
+     .group_by(User.id).all()
+
+    return render_template('chat_activity_report.html', messages_report=messages_report)
+
+#Report for cart activity
+@app.route('/report/cart_activity')
+@login_required
+def cart_activity_report():
+    if not current_user.is_authenticated or not current_user.is_admin:  # Optional: Restrict access to admins
+        abort(403)
+
+    # Total number of items in carts
+    total_items = db.session.query(db.func.count(CartItem.id)).scalar()
+
+    # Total number of unique users with items in their carts
+    unique_users = db.session.query(CartItem.user_id).distinct().count()
+
+    # Total quantity of items in all carts
+    total_quantity = db.session.query(db.func.sum(CartItem.quantity)).scalar()
+
+    return render_template('cart_activity_report.html', total_items=total_items, unique_users=unique_users, total_quantity=total_quantity)

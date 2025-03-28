@@ -1,28 +1,36 @@
 
 {% extends 'layout.html' %}
 {% block content %}
-    <div class="post-container">
-    <h3>Posts</h3>
-    <article class="media content-section">
-        <a href="{{ url_for('post', post_id=posts.id) }}" class="inner-content-section-link">
-          <div class="inner-content-section">
-            <div class="inner-content-section-metadata">
-              <h5><a class="article-title" href="{{ url_for('post', post_id=posts.id)}}">{{ posts.title }}</a></h5>
-              <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + posts.author.image_file) }}">
-                <div class="media-body">
-                  <div class="article-metadata">
-                    <a class="mr-2 username" href="{{url_for('user_posts', username=posts.author.username)}}">{{ posts.author.username }}</a>
+
+    <h4>Post Upclose</h4>
+    <div class="post-container"></div>
+      <article class="media content-section">
+          <a href="{{ url_for('post', post_id=posts.id) }}" class="inner-content-section-link">
+            <div class="inner-content-section">
+              <div class="inner-content-section-metadata">
+                <h5><a class="article-title" href="{{ url_for('post', post_id=posts.id)}}">{{ posts.title }}</a></h5>
+                <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + posts.author.image_file) }}">
+                  <div class="media-body">
+                    <div class="article-metadata">
+                      <a class="mr-2 username" href="{{url_for('user_posts', username=posts.author.username)}}">{{ posts.author.username }}</a>
+                    </div>
                   </div>
-                </div>
+              </div>
+              <div class="post-image-container">
+                {% if posts.image_file %}
+                <img src="{{ url_for('static', filename='post_images/' + posts.image_file) }}" alt="{{ posts.title}}" class="card-image">
+                {% endif %}
+              </div>
             </div>
-            <div class="post-image-container">
-              {% if posts.image_file %}
-              <img src="{{ url_for('static', filename='post_images/' + posts.image_file) }}" alt="{{ posts.title}}" class="card-image">
-              {% endif %}
-            </div>
-          </div>
-        </a>
+          </a>
+      </article>
+      <article class="media content-section " id='post-content'>
+        <div class="post-content">
+          <p class="post-content">{{ posts.content }}</p>
+          <p class="post-price">Charging at only sh. {{ posts.price }}</p>
+          <a href="{{ url_for('add_to_cart', post_id=posts.id) }}" class="btn btn-primary">Add to Cart</a>        </div>
       </article>
     </div>
+
 
 {% endblock %}

@@ -4,7 +4,7 @@
 <!-- Looping through the posts of the current page -->
     {% for post in posts.items%}
     <article class="media content-section">
-      <a href="{{ url_for('post', post_id=post.id) }}" class="inner-content-section-link">
+      <a href="{{ url_for('post', post_id=post.id) }}" id="inner-content-section-link">
         <div class="inner-content-section">
           <div class="inner-content-section-metadata">
             <h5><a class="article-title" href="{{ url_for('post', post_id=post.id)}}">{{ post.title }}</a></h5>
@@ -28,9 +28,13 @@
 {% endblock %}
 {% block sidebar %}
     <div class="search">
-      <form action="{{ url_for('search') }}" method="GET" class="search-form">
-        <input type="text" name="query" placeholder="Book..." required>
-        <button type="submit">Search</button>
+      <form action="{{ url_for('search') }}" method="GET" class="search-form d-flex">
+        <div class="input-group">
+          <input type="text" name="query" class="form-control" placeholder="Book..." required>
+          <button type="submit" class="btn btn-outline-secondary">
+            <i class="fas fa-search"></i> <!-- Font Awesome search icon -->
+          </button>
+        </div>
       </form>
 
     </div>

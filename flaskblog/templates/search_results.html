@@ -2,26 +2,31 @@
 
 {% block content %}
 <div class="search-div">
-    <h3>Search Results for "{{ query }}"</h3>
+    <h4>Search Results for "{{ query }}"</h4>
 
     {% if results %}
         <ul class="actual-content" id="search-results">
             {% for post in results %}
-                <article class="media content-section ">
-                    <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + post.author.image_file) }}">
-                    <div class="media-body">
-                        <div class="article-metadata">
-                        <a class="mr-2" href="{{url_for('user_posts', username=post.author.username)}}">{{ post.author.username }}</a>
-                        <small class="text-muted">{{ post.date_posted.strftime('%Y-%m-%d') }}</small>
-                        </div>
-                        <h3><a class="article-title" href="{{ url_for('post', post_id=post.id)}}">{{ post.title }}</a></h3>
-                        <div class="post-image">
-                            {% if post.image_file %}
-                            <img src="{{ url_for('static', filename='post_images/' + post.image_file) }}" alt="{{ post.title}}" class="card-image">
-                            {% endif %}
+            <article class="media content-section">
+                <a href="{{ url_for('post', post_id=post.id) }}" class="inner-content-section-link">
+                  <div class="inner-content-section">
+                    <div class="inner-content-section-metadata">
+                      <h5><a class="article-title" href="{{ url_for('post', post_id=post.id)}}">{{ post.title }}</a></h5>
+                      <img class="rounded-circle article-img" src="{{ url_for('static', filename='profile_pics/' + post.author.image_file) }}">
+                        <div class="media-body">
+                          <div class="article-metadata">
+                            <a class="mr-2 username" href="{{url_for('user_posts', username=post.author.username)}}">{{ post.author.username }}</a>
+                          </div>
                         </div>
                     </div>
-                </article>
+                    <div class="post-image-container">
+                      {% if post.image_file %}
+                      <img src="{{ url_for('static', filename='post_images/' + post.image_file) }}" alt="{{ post.title}}" class="card-image">
+                      {% endif %}
+                    </div>
+                  </div>
+                </a>
+              </article>
             {% endfor %}
         </ul>
     {% else %}

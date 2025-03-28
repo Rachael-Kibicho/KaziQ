@@ -5,6 +5,7 @@ from datetime import datetime
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 
 from dotenv import load_dotenv
 import os
@@ -23,6 +24,7 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 #Making sure CORS recognizes our url as an exception to the same-origin policy
 

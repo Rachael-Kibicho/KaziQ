@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h2>Cart Activity Report</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Total Items in Carts</th>
+                <th>Total Unique Users with Carts</th>
+                <th>Total Quantity of Items</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ total_items }}</td>
+                <td>{{ unique_users }}</td>
+                <td>{{ total_quantity }}</td>
+            </tr>
+        </tbody>
+    </table>
+{% endblock %}

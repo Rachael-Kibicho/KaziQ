@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+    <h2>Chat Activity Report</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Total Notifications</th>
+                <th>Total Private Chats</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in messages_report %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.total_notifications }}</td>
+                    <td>{{ user.total_private_chats }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
