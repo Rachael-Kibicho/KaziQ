@@ -4,7 +4,7 @@
     <h4>Your Cart</h4>
     <table class="table">
         <thead>
-            <tr>
+            <tr class="table-section">
                 <th>Post Title</th>
                 <th>Quantity</th>
                 <th>Unit Price</th>
@@ -20,7 +20,7 @@
                         <td><h5><a class="article-title" href="{{ url_for('post', post_id=item.post.id)}}">{{ item.post.title }}</a></h5></td>
                         <td>{{ item.quantity }}</td>
                         <td>sh. {{ item.post.price }}</td>
-                        <td>sh. {{ item.post.price * item.quantity}}</td>
+                        <td>sh. {{ item.post.price|int * item.quantity}}</td>
                         <td>
                             <form action="{{ url_for('remove_from_cart', item_id=item.id) }}" method="POST">
                                 <button type="submit" class="btn btn-danger">Remove</button>
@@ -39,9 +39,26 @@
             </div>
         </tbody>
     </table>
+    <form id="payment-form">
+        <a type="submit" class="btn btn-success" href="{{url_for('checkout') }}" target="_blank">Pay with Pesapal</a>
+    </form>
     <a href="{{ url_for('home') }}" class="btn btn-secondary continue-shopping">Continue Shopping</a>
-
 </div>
 
+<script>
+    document.getElementById('checkout-btn').addEventListener('click', async () => {
+        const response = await fetch('/initiate_payment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+
+        if (response.ok) {
+            const { redirect_url } = await response.json();
+            window.location.href = redirect_url;
+        } else {
+            alert('Payment initiation failed');
+        }
+    });
+    </script>
 
 {% endblock %}

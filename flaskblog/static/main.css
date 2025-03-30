@@ -361,6 +361,29 @@ body {
     text-align:center;
   }
 
+  .cart{
+    display:flex;
+    justify-content:start;
+    align-items:start;
+    flex-direction:column;
+    width:200px;
+  }
+
+  .cart-container{
+    display:flex;
+    justify-content:space-between;
+    align-items:start;
+  }
+
+  .continue-shopping{
+    height:50px;
+    width:200px;
+    border-radius:1em;
+    text-align:center;
+    padding:10px 16px 5px 16px;
+  }
+
+
   .chat-container {
     display: flex;
     flex-direction: column;
@@ -549,7 +572,6 @@ body {
   padding: 15px;
   border-radius: 1em;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  background-color:#007bff;
   opacity: 0.95;
   transition: opacity 0.5s ease-out;
 }
@@ -628,27 +650,6 @@ footer{
   background:none;
   border-radius:0 1em 1em 0;
   text-align:center;
-}
-
-.cart{
-  display:flex;
-  justify-content:start;
-  align-items:start;
-  flex-direction:column;
-}
-
-.cart-container{
-  display:flex;
-  justify-content:space-between;
-  align-items:start;
-}
-
-.continue-shopping{
-  height:50px;
-  width:200px;
-  border-radius:1em;
-  text-align:center;
-  padding:10px 16px 5px 16px;
 }
 
 .user-post-title{

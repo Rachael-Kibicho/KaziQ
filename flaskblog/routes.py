@@ -1,8 +1,11 @@
+import uuid
 import requests
+import json
 from flask import render_template, url_for, flash, redirect, request, jsonify, abort
+import time
 from stream_chat import StreamChat
 from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, PostForm
-from flaskblog import app, db, bcrypt, STREAM_API_KEY, STREAM_API_SECRET, socketio, emit
+from flaskblog import app, db, bcrypt, STREAM_API_KEY, STREAM_API_SECRET, socketio, emit, PESAPAL_CONSUMER_KEY , PESAPAL_CONSUMER_SECRET
 from flaskblog.models import User, Post, CartItem, Notification, db
 from flask_login import login_user, current_user, logout_user, login_required
 import os
@@ -10,8 +13,10 @@ import secrets
 from PIL import Image
 from flask_migrate import Migrate
 from datetime import datetime
+from requests_oauthlib import OAuth1
+import requests
 
-#HTML routes
+# #HTML routes
 
 #A few useful functions to be used in the routes
 
@@ -143,6 +148,7 @@ def new_post():
     return render_template('create_posts.html', title='New Post', form=form)
 
 @app.route("/post/<int:post_id>")
+@login_required
 def post(post_id):
     posts = Post.query.get_or_404(post_id)
     cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
@@ -247,6 +253,7 @@ def search():
     return render_template('search_results.html', title='Search', query=query, results=results)
 
 
+#-----CART SECTION--------
 @app.route('/add_to_cart/<int:post_id>', methods=['GET','POST'])
 @login_required
 def add_to_cart(post_id):
@@ -285,7 +292,8 @@ def remove_from_cart(item_id):
 
 
 # Report generation routes
-#report for registered businsesses
+
+#Report for registered businsesses
 @app.route('/report/registered_businesses')
 @login_required
 def registered_businesses_report():
@@ -298,7 +306,7 @@ def registered_businesses_report():
 @app.route('/report/chat_activity')
 @login_required
 def chat_activity_report():
-    if not current_user.is_authenticated or not current_user.is_admin:  # Optional: Restrict access to admins
+    if not current_user.is_authenticated or not current_user.is_admin:  # Restrict access to admins
         abort(403)
 
     # Fetch total messages sent by each user
@@ -321,7 +329,7 @@ def chat_activity_report():
 @app.route('/report/cart_activity')
 @login_required
 def cart_activity_report():
-    if not current_user.is_authenticated or not current_user.is_admin:  # Optional: Restrict access to admins
+    if not current_user.is_authenticated or not current_user.is_admin:  # Restrict access to admins
         abort(403)
 
     # Total number of items in carts
@@ -334,3 +342,151 @@ def cart_activity_report():
     total_quantity = db.session.query(db.func.sum(CartItem.quantity)).scalar()
 
     return render_template('cart_activity_report.html', total_items=total_items, unique_users=unique_users, total_quantity=total_quantity)
+
+
+#DOCS By Pythoneer
+# ======== PesaPal Service Class ========
+class PesaPal:
+    def __init__(self):
+        self.base_url = "https://cybqa.pesapal.com/pesapalv3/api"
+        self.token = None
+
+    def authenticate(self):
+        """Handle authentication with retry logic"""
+        try:
+            if self.token:  # Reuse existing token if valid
+                return self.token
+
+            endpoint = "Auth/RequestToken"
+            payload = {
+                "consumer_key": "qkio1BGGYAXTu2JOfm7XSXNruoZsrqEW",
+                "consumer_secret": "osGQ364R49cXKeOYSpaOnT++rHs="
+            }
+
+            response = requests.post(
+                f"{self.base_url}/{endpoint}",
+                json=payload,
+                headers={'Accept': 'application/json'}
+            )
+
+            response.raise_for_status()
+            self.token = response.json()['token']
+            return self.token
+
+        except Exception as e:
+            print(f"Authentication Error: {str(e)}")
+            self.token = None
+            raise
+
+    def submit_order(self, payment_data):
+        endpoint = 'Transactions/SubmitOrderRequest'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {self.authenticate()}"
+        }
+
+        response = requests.post(
+            f"{self.base_url}/{endpoint}",
+            json=payment_data,
+            headers=headers
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            # Extract actual redirect URL from Pesapal's response
+            redirect_url = data.get('call_back_url') or data.get('redirect_url')
+            return {
+                "redirect_url": redirect_url,
+                "order_tracking_id": data.get('order_tracking_id'),
+                "status": data.get('status')
+            }
+        else:
+            raise Exception(f"Payment failed: {response.text}")
+
+
+
+    def check_transaction_status(self, tracking_id):
+
+        endpoint = f"Transactions/GetTransactionStatus?orderTrackingId={tracking_id}"
+        response = requests.get(
+            f"{self.base_url}/{endpoint}",
+            headers={'Authorization': f"Bearer {self.authenticate()}"}
+        )
+        response.raise_for_status()
+        return response.json()
+
+
+# ======== Flask Routes ========
+@app.route('/initiate_payment', methods=['GET'])
+@login_required
+def initiate_payment():
+    try:
+        # Get user and cart data
+        user = User.query.get_or_404(current_user.id)
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+
+        if not cart_items:
+            return jsonify({"error": "Cart is empty"}), 400
+
+        # Calculate total price
+        total_price = sum(
+            int(Post.query.get_or_404(item.post_id).price) * item.quantity
+            for item in cart_items
+        )
+
+        # Build payment payload
+        payment_data = {
+            "id": str(uuid.uuid4()),  # Generate unique ID
+            "amount": total_price,
+            "currency": "KES",
+            "description": f"Order from {user.username}",
+            "callback_url": url_for('payment_callback', _external=True),
+            "response_url": url_for('view_cart', _external=True),
+            "notification_id": "0090e9da-9801-4e45-8e16-dbfdbfb751a5",
+            "billing_address": {
+                "email_address": user.email,
+                "phone_number": user.whatsapp or "",
+                "first_name": user.username,
+                "last_name": ""
+            }
+        }
+        # Process payment
+        pesapal = PesaPal()
+        response = pesapal.submit_order(payment_data)
+
+        # Handle payment status
+        if response['status'] == '500':
+            return jsonify({"error": response.get('error', {}).get('message', 'Payment failed')}), 500
+
+        return jsonify({
+            "redirect_url": response['redirect_url'],
+            "order_id": response['order_tracking_id']
+        })
+
+    except Exception as e:
+        print(f"Payment Initiation Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+@app.route('/payment_callback', methods=['GET'])
+def payment_callback():
+    try:
+        tracking_id = request.args.get('order_tracking_id')
+
+        if not all([tracking_id]):
+            return jsonify({"error": "Missing parameters"}), 400
+
+        # Verify payment status
+        pesapal = PesaPal()
+        status_response = pesapal.check_transaction_status(tracking_id)
+
+        # Update your database here based on status
+        return jsonify(status_response)
+
+    except Exception as e:
+        print(f"Callback Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/checkout')
+@login_required
+def checkout():
+    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+    return render_template('checkout.html', cart_items=cart_items)
