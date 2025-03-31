@@ -435,7 +435,7 @@ class PesaPal:
         return response.json()
 
 # ======== Payment Routes ========
-@app.route('/initiate_payment', methods=['GET'])
+@app.route('/initiate_payment', methods=['GET', 'POST'])
 @login_required
 def initiate_payment():
     try:
@@ -444,7 +444,8 @@ def initiate_payment():
         cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
 
         if not cart_items:
-            return jsonify({"error": "Cart is empty"}), 400
+            flash("Your cart is empty!", "warning")
+            return redirect(url_for('view_cart'))
 
         # Calculate total price
         total_price = sum(
@@ -459,7 +460,7 @@ def initiate_payment():
             "currency": "KES",
             "description": f"Order from {user.username}",
             "callback_url": url_for('payment_callback', _external=True),
-            "response_url": url_for('view_cart', _external=True),
+            "response_url": url_for('payment_complete', _external=True),
             "notification_id": "0090e9da-9801-4e45-8e16-dbfdbfb751a5",
             "billing_address": {
                 "email_address": user.email,
@@ -468,22 +469,26 @@ def initiate_payment():
                 "last_name": ""
             }
         }
+
         # Process payment
         pesapal = PesaPal()
-        response = pesapal.submit_order(payment_data)
+        try:
+            response = pesapal.submit_order(payment_data)
 
-        # Handle payment status
-        if response['status'] == '500':
-            return jsonify({"error": response.get('error', {}).get('message', 'Payment failed')}), 500
+            if response.get('status') == '500':
+                flash("Payment processing error. Please try again.", "danger")
+                return redirect(url_for('view_cart'))
 
-        return jsonify({
-            "redirect_url": response['redirect_url'],
-            "order_id": response['order_tracking_id']
-        })
+            return redirect(response['redirect_url'])
+
+        except Exception as e:
+            flash(f"Error initializing payment: {str(e)}", "danger")
+            return redirect(url_for('view_cart'))
 
     except Exception as e:
-        print(f"Payment Initiation Error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return render_template('error.html', error=str(e))
+
+
 
 @app.route('/payment_callback', methods=['GET', 'POST'])
 def payment_callback():
@@ -563,116 +568,121 @@ def payment_callback():
 @app.route('/checkout')
 @login_required
 def checkout():
-    # Get current cart items
-    cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+    try:
+        # Get current cart items
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
 
+        if not cart_items:
+            flash('Your cart is empty!', 'warning')
+            current_app.logger.warning("Cart is empty. Redirecting to view_cart.")
+            return redirect(url_for('view_cart'))
 
-    if not cart_items:
-        flash('Your cart is empty!', 'warning')
-        return redirect(url_for('view_cart'))
+        # Calculate total price and create a unique cart signature
+        total_price = sum(
+            int(Post.query.get_or_404(item.post_id).price) * item.quantity
+            for item in cart_items
+        )
+        current_app.logger.info(f"Total price calculated: {total_price}")
 
-    # Calculate total price and create a unique cart signature
-    total_price = sum(
-        int(Post.query.get_or_404(item.post_id).price) * item.quantity
-        for item in cart_items
-    )
+        # Generate a cart hash based on items and quantities
+        cart_signature = "-".join([
+            f"{item.post_id}:{item.quantity}" for item in sorted(cart_items, key=lambda x: x.post_id)
+        ])
 
-    # Generate a cart hash based on items and quantities
-    cart_signature = "-".join([
-        f"{item.post_id}:{item.quantity}" for item in sorted(cart_items, key=lambda x: x.post_id)
-    ])
+        # Try to get existing order tracking ID for this cart state
+        existing_tracking_id = session.get('pesapal_tracking_id')
+        existing_cart_signature = session.get('cart_hash')
+        current_app.logger.info(f"Existing tracking ID: {existing_tracking_id}, Existing cart signature: {existing_cart_signature}")
 
-    # Try to get existing order tracking ID for this cart state
-    # (You'll need to add a new model to track this, but we'll use session for now)
-    existing_tracking_id = session.get('pesapal_tracking_id')
-    existing_cart_signature = session.get('cart_hash')
+        # If cart has changed or no tracking ID exists, generate a new one
+        if existing_cart_signature != cart_signature or not existing_tracking_id:
+            try:
 
-    # If cart has changed or no tracking ID exists, generate a new one
-    if existing_cart_signature != cart_signature or not existing_tracking_id:
-        try:
+                # Create a unique order ID (This will be your internal reference)
+                order_id = str(uuid.uuid4())
+                current_app.logger.info(f"New order ID generated: {order_id}")
 
-            session.update({
-            'order_id': order_id,
-            'total_amount': total_price,
-            'user_id': current_user.id,  # Critical for callback
-            'cart_signature': cart_signature
+                # Build payment payload
+                payment_data = {
+                    "id": order_id,  # Generate unique ID
+                    "amount": total_price,
+                    "currency": "KES",
+                    "description": f"Order from {current_user.username}",
+                    "callback_url": url_for('payment_callback', _external=True),
+                    "response_url": url_for('payment_complete', _external=True),
+                    "notification_id": "0090e9da-9801-4e45-8e16-dbfdbfb751a5",
+                    "billing_address": {
+                        "email_address": current_user.email,
+                        "phone_number": current_user.whatsapp or "",
+                        "first_name": current_user.username,
+                        "last_name": ""
+                    }
+                }
+                current_app.logger.info(f"Payment data: {payment_data}")
+
+                # Process payment
+                pesapal = PesaPal()
+                response = pesapal.submit_order(payment_data)
+                current_app.logger.info(f"PesaPal submit_order response: {response}")
+
+                if response.get('status') == '500':
+                    flash("Payment processing error. Please try again.", "danger")
+                    current_app.logger.error("PesaPal returned status 500.")
+                    return redirect(url_for('view_cart'))
+
+                # Store new tracking ID and cart signature in session
+                session['pesapal_tracking_id'] = response['order_tracking_id']
+                session['cart_hash'] = cart_signature
+                session['order-id'] = order_id
+                session['total_amount'] = total_price
+                current_app.logger.info("New tracking ID and cart signature stored in session.")
+
+                tracking_id = response['order_tracking_id']
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error during PesaPal interaction: {str(e)}")
+                flash("Checkout process failed", "danger")
+                return redirect(url_for('view_cart'))
+        else:
+            # Use existing tracking ID if cart hasn't changed
+            tracking_id = existing_tracking_id
+            current_app.logger.info(f"Using existing tracking ID: {tracking_id}")
+
+        # Prepare seller information for display
+        sellers_info = {}
+        for item in cart_items:
+            post = Post.query.get_or_404(item.post_id)
+            seller = User.query.get_or_404(post.user_id)
+
+            if seller.id not in sellers_info:
+                sellers_info[seller.id] = {
+                    'name': seller.username,
+                    'total': 0,
+                    'items': []
+                }
+
+            item_price = float(post.price) * item.quantity
+            sellers_info[seller.id]['total'] += item_price
+            sellers_info[seller.id]['items'].append({
+                'title': post.title,
+                'quantity': item.quantity,
+                'price': post.price,
+                'subtotal': item_price
             })
 
-
-            # Create a unique order ID (This will be your internal reference)
-            order_id = str(uuid.uuid4())
-
-            # Build payment payload
-            payment_data = {
-                "id": order_id,  # Generate unique ID
-                "amount": total_price,
-                "currency": "KES",
-                "description": f"Order from {current_user.username}",
-                "callback_url": url_for('payment_callback', _external=True),
-                "response_url": url_for('payment_complete', _external=True),
-                "notification_id": "0090e9da-9801-4e45-8e16-dbfdbfb751a5",
-                "billing_address": {
-                    "email_address": current_user.email,
-                    "phone_number": current_user.whatsapp or "",
-                    "first_name": current_user.username,
-                    "last_name": ""
-                }
-            }
-
-            # Process payment
-            pesapal = PesaPal()
-            response = pesapal.submit_order(payment_data)
-
-            if response.get('status') == '500':
-                flash("Payment processing error. Please try again.", "danger")
-                return redirect(url_for('view_cart'))
-
-            # Store new tracking ID and cart signature
-            session['pesapal_tracking_id'] = response['order_tracking_id']
-            session['cart_hash'] = cart_signature
-            session['order-id'] = order_id
-            session['total_amount'] = total_price
-
-            tracking_id = response['order_tracking_id']
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Checkout error: {str(e)}")
-            flash("Checkout process failed", "danger")
-            return redirect(url_for('view_cart'))
-    else:
-        # Use existing tracking ID if cart hasn't changed
-        tracking_id = existing_tracking_id
-
-    # Prepare seller information for display
-    sellers_info = {}
-    for item in cart_items:
-        post = Post.query.get_or_404(item.post_id)
-        seller = User.query.get_or_404(post.user_id)
-
-        if seller.id not in sellers_info:
-            sellers_info[seller.id] = {
-                'name': seller.username,
-                'total': 0,
-                'items': []
-            }
-
-        item_price = float(post.price) * item.quantity
-        sellers_info[seller.id]['total'] += item_price
-        sellers_info[seller.id]['items'].append({
-            'title': post.title,
-            'quantity': item.quantity,
-            'price': post.price,
-            'subtotal': item_price
-        })
-
-    # Render checkout template with iframe URL
-    iframe_url = f"https://cybqa.pesapal.com/pesapaliframe/PesapalIframe3/Index?OrderTrackingId={tracking_id}"
-    return render_template(
-        'checkout.html',
-        iframe_url=iframe_url,
-        cart_items=cart_items,
-        sellers=sellers_info,
-        total_price=total_price)
+        # Render checkout template with iframe URL
+        iframe_url = f"https://cybqa.pesapal.com/pesapaliframe/PesapalIframe3/Index?OrderTrackingId={tracking_id}"
+        current_app.logger.info(f"Rendering checkout template with iframe URL: {iframe_url}")
+        return render_template(
+            'checkout.html',
+            iframe_url=iframe_url,
+            cart_items=cart_items,
+            sellers=sellers_info,
+            total_price=total_price)
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in checkout: {str(e)}")
+        flash("Checkout process failed", "danger")
+        return redirect(url_for('view_cart'))
 
 @app.route('/payment_complete')
 @login_required
