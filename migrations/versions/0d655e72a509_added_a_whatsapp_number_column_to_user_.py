@@ -17,12 +17,7 @@ depends_on = None
 
 
 def upgrade():
-    with op.batch_alter_table('post', schema=None) as batch_op:
-        # Add the 'price' column with a default value of 0
-        batch_op.add_column(sa.Column('price', sa.Integer(), nullable=True, server_default='0'))
 
-    # Update all existing rows to have a default value for 'price'
-    op.execute('UPDATE post SET price = 0')
 
     with op.batch_alter_table('post', schema=None) as batch_op:
         # Make the 'price' column NOT NULL

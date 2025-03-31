@@ -254,7 +254,7 @@ body {
     background: whitesmoke;
     border: none;
     border-radius: 1em;
-    height:600px;
+    height:900px;
     }
 
   .content-section:hover{
@@ -633,6 +633,27 @@ footer{
   height: 100%;
   border-radius: 1em;
   border:none;
+}
+ /* For the checkout page */
+.card-body{
+  display:flex;
+  justify-content:start;
+  align-items:center;
+  flex-direction:column;
+
+}
+
+.checkout-container{
+  width:1000px;
+}
+
+.checkout-contain{
+  border-radius:1em;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+iframe{
+  height:250px;
 }
 
 .search-div {

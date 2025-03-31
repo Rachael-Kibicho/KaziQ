@@ -53,6 +53,45 @@
                         {{form.whatsapp(class="form-control form-control-lg")}}
                     {% endif %}
                 </div>
+                <div class="form-group">
+                    {{form.bank_account.label(class="form-control-label")}}
+                    {% if form.bank_account.errors %}
+                        {{form.bank_account(class="form-control form-control-lg is-invalid")}}
+                        <div class="invalid-feedback">
+                            {% for error in form.bank_account.errors %}
+                                <span>{{error}}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{form.bank_account(class="form-control form-control-lg")}}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{form.bank_name.label(class="form-control-label")}}
+                    {% if form.bank_name.errors %}
+                        {{form.bank_name(class="form-control form-control-lg is-invalid")}}
+                        <div class="invalid-feedback">
+                            {% for error in form.bank_name.errors %}
+                                <span>{{error}}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{form.bank_name(class="form-control form-control-lg")}}
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    {{form.phone_for_payment.label(class="form-control-label")}}
+                    {% if form.phone_for_payment.errors %}
+                        {{form.phone_for_payment(class="form-control form-control-lg is-invalid")}}
+                        <div class="invalid-feedback">
+                            {% for error in form.phone_for_payment.errors %}
+                                <span>{{error}}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{form.phone_for_payment(class="form-control form-control-lg")}}
+                    {% endif %}
+                </div>
             </fieldset>
             <div class="form-group">
                 {{form.picture.label()}}

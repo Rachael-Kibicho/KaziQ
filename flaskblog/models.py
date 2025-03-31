@@ -10,6 +10,11 @@ class User(db.Model, UserMixin):
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    account_balance = db.Column(db.Float, default=0.0)  # Current available balance
+    total_sales = db.Column(db.Float, default=0.0)      # Lifetime sales
+    bank_account = db.Column(db.String(50), nullable=True)
+    bank_name = db.Column(db.String(100), nullable=True)
+    phone_for_payment = db.Column(db.String(20), nullable=True)
     posts = db.relationship('Post', backref='author', lazy=True)
 
 
@@ -48,3 +53,34 @@ class Notification(db.Model):
 
     def __repr__(self):
         return f"Notification('{self.user_id}', '{self.message}', '{self.is_read}')"
+
+class Transaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(100), nullable=False)
+    tracking_id = db.Column(db.String(100), nullable=False)
+    buyer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    total_amount = db.Column(db.Float, nullable=False)
+    platform_fee = db.Column(db.Float, nullable=False)  # Your commission
+    status = db.Column(db.String(30), default='pending')  # pending, completed, failed
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship to buyer
+    buyer = db.relationship('User', foreign_keys=[buyer_id], backref='purchases')
+
+    # Relationship to transaction items
+    items = db.relationship('TransactionItem', backref='transaction', cascade='all, delete-orphan')
+
+class TransactionItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    seller_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    price = db.Column(db.Float, nullable=False)
+    seller_amount = db.Column(db.Float, nullable=False)  # Amount seller receives after commission
+    is_disbursed = db.Column(db.Boolean, default=False)
+    disbursement_date = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    post = db.relationship('Post')
+    seller = db.relationship('User', foreign_keys=[seller_id], backref='sales')

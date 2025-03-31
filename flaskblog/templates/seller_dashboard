@@ -3,38 +3,38 @@
 <div class="container mt-4">
     <h2>Checkout</h2>
 
-    <div class="row checkout-container">
+    <div class="row">
         <div class="col-md-4">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5>Order Summary</h5>
                 </div>
-                <div class="card-body checkout-contain">
+                <div class="card-body">
+                    <h6>Items by Seller:</h6>
                     {% for seller_id, info in sellers.items() %}
-                        <div class="mb-3">
-                            <h6 class="text-muted">{{ info.name }}</h6>
-                            <ul class="list-group">
-                                {% for item in info['items'] %}
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    {{ item.title }}
-                                    <span class="ml-3">
-                                        {{ item.quantity }} x {{ item.price }} KES
-                                    </span>
-                                </li>
-                                {% endfor %}
-                            </ul>
-                            <div class="text-end mt-2">
-                                <small>Item_total: {{ "%.2f"|format(info.total) }} KES</small>
-                            </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">{{ info.name }}</h6>
+                        <ul class="list-group">
+                            {% for item in info.items %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ item.title }}
+                                <span>
+                                    {{ item.quantity }} x {{ item.price }} KES
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="text-end mt-2">
+                            <small>Seller Total: {{ "%.2f"|format(info.total) }} KES</small>
                         </div>
+                    </div>
                     {% endfor %}
 
-                    <div class="d-flex mt-3 text-end">
+                    <div class="mt-3 text-end">
                         <strong>Total: {{ "%.2f"|format(total_price) }} KES</strong>
-                        <a href="{{ url_for('view_cart') }}" class="btn btn-primary ml-3">Back to Cart</a>
                     </div>
                 </div>
-                <div class="card-footer checkout-contain">
+                <div class="card-footer">
                     <small class="text-muted">Your payment is processed securely by PesaPal</small>
                 </div>
             </div>
