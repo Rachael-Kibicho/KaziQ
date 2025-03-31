@@ -4,14 +4,14 @@
     <h2>Checkout</h2>
 
     <div class="row checkout-container">
-        <div class="col-md-4">
-            <div class="card mb-4">
+        <div class="col-md-4 ">
+            <div class="card mb-4 checkout-contain">
                 <div class="card-header">
                     <h5>Order Summary</h5>
                 </div>
-                <div class="card-body checkout-contain">
+                <div class="card-body ">
                     {% for seller_id, info in sellers.items() %}
-                        <div class="mb-3">
+                        <div class="mb-3" >
                             <h6 class="text-muted">{{ info.name }}</h6>
                             <ul class="list-group">
                                 {% for item in info['items'] %}
@@ -34,14 +34,14 @@
                         <a href="{{ url_for('view_cart') }}" class="btn btn-primary ml-3">Back to Cart</a>
                     </div>
                 </div>
-                <div class="card-footer checkout-contain">
+                <div class="card-footer">
                     <small class="text-muted">Your payment is processed securely by PesaPal</small>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-8">
-            <div class="card">
+        <div class="col-md-8 ">
+            <div class="card checkout-contain">
                 <div class="card-header">
                     <h5>Complete Your Payment</h5>
                 </div>

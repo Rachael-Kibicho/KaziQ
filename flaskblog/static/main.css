@@ -361,12 +361,14 @@ body {
     text-align:center;
   }
 
+ 
+
   .cart{
     display:flex;
     justify-content:start;
     align-items:start;
     flex-direction:column;
-    width:200px;
+    width:900px;
   }
 
   .cart-container{

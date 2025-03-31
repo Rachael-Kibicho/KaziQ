@@ -6,39 +6,53 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
+from engineio.async_drivers import gevent
+
 
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # Loading environment variables from a .env file
+load_dotenv()
 
-#secrets area
-
+# Secrets (use environment variables)
 STREAM_API_KEY = os.getenv("STREAM_API_KEY", "hx3bnnadbnhm")
 STREAM_API_SECRET = os.getenv("STREAM_API_SECRET", "hs8knp6m893un45zaggqrn9mf4gvjxneyzqaust7nnudnv9jkrkg6gyp83kmhhzf")
-
 PESAPAL_CONSUMER_KEY = os.getenv("PESAPAL_CONSUMER_KEY", "KHyCbxCmYCzi6OG/UnK0dZFc+T16NzJ1")
-PESAPAL_CONSUMER_SECRET =os.getenv("PESAPAL_CONSUMER_SECRET", "WU+ubs2hxYDpWHPx5BlOALtlFCI=")
-
-# IPN id : 50738642-a9ff-4a4c-ac6e-dbfec22fddac
+PESAPAL_CONSUMER_SECRET = os.getenv("PESAPAL_CONSUMER_SECRET", "WU+ubs2hxYDpWHPx5BlOALtlFCI=")
 
 app = Flask(__name__)
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # or 'Strict' depending on your needs
-app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True
+app.config.update({
+    'SECRET_KEY': os.getenv('SECRET_KEY', 'efb1507e69b6b364a5aab88e0f7d694c'),
+    'SESSION_TYPE': 'sqlalchemy',
+    'SESSION_COOKIE_SECURE': False,  # Set to True in production
+    'SESSION_COOKIE_SAMESITE': 'Lax',
+    'REMEMBER_COOKIE_SAMESITE': 'Lax',
+    'SQLALCHEMY_DATABASE_URI': 'sqlite:///site.db',
+    'SQLALCHEMY_TRACK_MODIFICATIONS': False
+})
 
-app.config['SECRET_KEY'] = 'efb1507e69b6b364a5aab88e0f7d694c'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
-socketio = SocketIO(app, cors_allowed_origins="*")
 
-#Making sure CORS recognizes our url as an exception to the same-origin policy
-CORS(app, origins=["http://localhost:5000"])  # Allow your frontend origin
+# CORS Configuration
+CORS(app, origins=["http://localhost:5000"], supports_credentials=True)
+
+# SocketIO Configuration
+
+packages = []
+packages += ['engineio', 'socketio', 'flask_socketio', 'threading', 'time', 'queue','eventlet', 'gevent']
+
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="http://localhost:5000",
+    logging=True,
+    engineio_logger=True,
+    async_mode='eventlet'
+)
 
 from flaskblog.models import User
 

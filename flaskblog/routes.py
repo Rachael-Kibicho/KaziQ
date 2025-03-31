@@ -492,78 +492,68 @@ def initiate_payment():
 
 @app.route('/payment_callback', methods=['GET', 'POST'])
 def payment_callback():
-    try:
-        # Get callback data
-        data = request.args if request.method == 'GET' else request.form
-        tracking_id = data.get('OrderTrackingId')
-        order_id = data.get('OrderMerchantReference')
+        try:
+            # Debug: Check session contents
+            current_app.logger.info(f"Session data: {session}")
 
-        # Validate parameters
-        if not all([tracking_id, order_id]):
-            return jsonify({
-                "status": "error",
-                "message": "Missing required parameters"
-            }), 400
+            # Verify required session keys exist
+            tracking_id = session.get('pesapal_tracking_id')
+            order_id = session.get('order_id')
+            total_amount = session.get('total_amount')
 
-        # Get essential data from session
-        total_amount = float(session.get('total_amount', 0))
-        buyer_id = session.get('user_id')
+            if not all([tracking_id, order_id, total_amount]):
+                current_app.logger.error("Missing session data")
+                flash("Session data not found", "danger")
+                return redirect(url_for('view_cart'))
 
-        if not buyer_id:
-            current_app.logger.error("No buyer_id found in session")
-            return jsonify({
-                "status": "error",
-                "message": "User session not found"
-            }), 400
+            # Calculate platform fee (10% in this example)
+            PLATFORM_FEE_PERCENTAGE = 0.10
+            platform_fee = round(total_amount * PLATFORM_FEE_PERCENTAGE, 2)
 
-        # Calculate platform fee (10% in this example)
-        PLATFORM_FEE_PERCENTAGE = 0.10
-        platform_fee = round(total_amount * PLATFORM_FEE_PERCENTAGE, 2)
+            # Try to find existing transaction
+            transaction = Transaction.query.filter_by(order_id=order_id).first()
 
-        # Try to find existing transaction
-        transaction = Transaction.query.filter_by(order_id=order_id).first()
+            if not transaction:
+                # Create new transaction with all required fields
+                transaction = Transaction(
+                    order_id=order_id,
+                    tracking_id=tracking_id,
+                    buyer_id=current_user.id,
+                    total_amount=total_amount,
+                    platform_fee=platform_fee,
+                    status='pending',
+                    date_created=datetime.utcnow()
+                )
+                db.session.add(transaction)
+                db.session.commit()
 
-        if not transaction:
-            # Create new transaction with all required fields
-            transaction = Transaction(
-                order_id=order_id,
-                tracking_id=tracking_id,
-                buyer_id=buyer_id,  # This was missing
-                total_amount=total_amount,
-                platform_fee=platform_fee,
-                status='pending',
-                date_created=datetime.utcnow()
-            )
-            db.session.add(transaction)
+            # Process payment status
+            pesapal = PesaPal()
+            status_response = pesapal.check_transaction_status(tracking_id)
+            payment_status = status_response.get('payment_status_description', 'pending').lower()
+
+            # Update transaction
+            transaction.status = payment_status
+
+            if payment_status == 'completed':
+                transaction.completed_at = datetime.utcnow()
+
             db.session.commit()
 
-        # Process payment status
-        pesapal = PesaPal()
-        status_response = pesapal.check_transaction_status(tracking_id)
-        payment_status = status_response.get('payment_status_description', 'pending').lower()
+            return jsonify({
+                "status": "success",
+                "order_id": order_id,
+                "payment_status": payment_status
+            })
 
-        # Update transaction
-        transaction.status = payment_status
-
-        if payment_status == 'completed':
-            transaction.completed_at = datetime.utcnow()
-
-        db.session.commit()
-
-        return jsonify({
-            "status": "success",
-            "order_id": order_id,
-            "payment_status": payment_status
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Callback error: {str(e)}", exc_info=True)
-        return jsonify({
-            "status": "error",
-            "message": "Payment processing failed",
-            "error": str(e)
-        }), 500
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Callback error: {str(e)}", exc_info=True)
+            return jsonify({
+                "status": "error",
+                "message": "Payment processing failed",
+                "error": str(e)
+            }), 500
 
 @app.route('/checkout')
 @login_required
