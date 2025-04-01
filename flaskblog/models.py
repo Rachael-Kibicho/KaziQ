@@ -2,6 +2,17 @@ from datetime import datetime
 from flaskblog import db
 from flask_login import UserMixin
 
+#categories of posts
+CATEGORIES = [
+    ('food', 'Food'),
+    ('electronics', 'Electronics'),
+    ('clothing', 'Clothing'),
+    ('books', 'Books'),
+    ('beauty_service', 'Beauty_service'),
+    ('cleaning', 'Cleaning'),
+    ('general', 'General')
+]
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -30,6 +41,7 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     image_file = db.Column(db.String(20), nullable=True)
     cart_items = db.relationship('CartItem', backref='post', lazy=True)
+    category = db.Column(db.String(50), nullable=False)
 
     def __repr__(self):
         return f"Post('{self.title}', '{self.date_posted}')"
@@ -39,6 +51,7 @@ class CartItem(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     quantity = db.Column(db.Integer, default=1)
+
 
     def __repr__(self):
         return f"CartItem('{self.user_id}', '{self.post_id}', '{self.quantity}')"
@@ -64,6 +77,7 @@ class Transaction(db.Model):
     status = db.Column(db.String(30), default='pending')  # pending, completed, failed
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
 
+
     # Relationship to buyer
     buyer = db.relationship('User', foreign_keys=[buyer_id], backref='purchases')
 
@@ -73,14 +87,16 @@ class Transaction(db.Model):
 class TransactionItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id'), nullable=False)
+    cart_item_id = db.Column(db.Integer, db.ForeignKey('cart_item.id'), nullable=False)  # ✅ Column is nullable=False
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     seller_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price = db.Column(db.Float, nullable=False)
-    seller_amount = db.Column(db.Float, nullable=False)  # Amount seller receives after commission
+    seller_amount = db.Column(db.Float, nullable=False)
     is_disbursed = db.Column(db.Boolean, default=False)
     disbursement_date = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     post = db.relationship('Post')
     seller = db.relationship('User', foreign_keys=[seller_id], backref='sales')
+    cart_item = db.relationship('CartItem', backref='transaction_items')  # ✅ Relationship fixed

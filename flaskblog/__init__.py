@@ -65,3 +65,25 @@ from flaskblog import routes
 @app.context_processor
 def inject_min_max():
     return dict(min=min, max=max)
+
+from flask import current_app
+from datetime import datetime
+
+def format_currency(value):
+    return f"{current_app.config['CURRENCY']} {value:,.2f}"
+
+def format_datetime(value):
+    if not value:
+        return "N/A"
+    return value.strftime("%Y-%m-%d %H:%M")
+
+#categories of posts
+CATEGORIES = [
+    ('food', 'Food'),
+    ('electronics', 'Electronics'),
+    ('clothing', 'Clothing'),
+    ('books', 'Books'),
+    ('beauty_service', 'Beauty_service'),
+    ('cleaning', 'Cleaning'),
+    ('general', 'General')
+]

@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block content %}
+<head>
+    <title>Receipt {{ order.order_id }}</title>
+    <style>
+        /* ... existing styles ... */
+    </style>
+</head>
+<body>
+    <div class="receipt-header">
+        <h2>Receipt for Order #{{ order.order_id }}</h2>
+        <p>Generated: {{ order.date_created }}</p>
+    </div>
+
+    <table class="receipt-items">
+        <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Price</th>
+        </tr>
+        {% for item in order.items %}  <!-- TransactionItem objects -->
+        <tr>
+            <td>{{ item.cart_item.post.title }}</td>  <!-- Access via cart_item relationship -->
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.price }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="receipt-total">
+        <p>Total: {{ order.total_amount }}</p>
+    </div>
+</body>
+{% endblock %}

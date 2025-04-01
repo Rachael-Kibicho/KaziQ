@@ -58,4 +58,22 @@
         </div>
     </div>
 </div>
+<script>
+    window.addEventListener('message', function(event) {
+      // Check if the message is from PesaPal
+      if (event.origin.includes('pesapal.com')) {
+        // Parse the message data
+        try {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+          // If payment is completed, redirect to payment_complete
+          if (data.status === 'COMPLETED' || data.status === 'success') {
+            window.location.href = "{{ url_for('payment_complete') }}";
+          }
+        } catch (e) {
+          console.error("Error processing payment message:", e);
+        }
+      }
+    });
+  </script>
 {% endblock %}

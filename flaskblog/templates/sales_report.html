@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Sales Report</h1>
+
+<table class="sales-report">
+    <tr>
+        <th>Seller</th>
+        <th>Total Sales</th>
+        <th>Last Sale Date</th>
+    </tr>
+    {% for entry in sales_data %}
+    <tr>
+        <td>{{ entry.seller }}</td>
+        <td>{{ entry.total_sales | format_currency }}</td>
+        <td>{{ entry.last_sale | format_datetime }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

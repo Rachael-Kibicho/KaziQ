@@ -11,20 +11,20 @@
                     <div class="form-group">
                         {{form.username.label(class="form-control-label")}}
                         {% if form.username.errors %}
-                            {{form.username(class="form-control form-control-lg is-invalid")}}
+                            {{ form.username(class="form-control form-control-lg", autocomplete="off") }}
                             <div class="invalid-feedback">
                                 {% for error in form.username.errors %}
                                     <span>{{error}}</span>
                                 {% endfor %}
                             </div>
                         {% else %}
-                            {{form.username(class="form-control form-control-lg")}}
+                            {{form.username(class="form-control form-control-lg", autocomplete='off', value='') }}
                         {% endif %}
                     </div>
                     <div class="form-group">
                         {{form.email.label(class="form-control-label")}}
                         {% if form.email.errors %}
-                            {{form.email(class="form-control form-control-lg is-invalid")}}
+                        {{ form.password(class="form-control form-control-lg", autocomplete="new-password", value='') }}
                             <div class="invalid-feedback">
                                 {% for error in form.email.errors %}
                                     <span>{{error}}</span>
@@ -87,6 +87,8 @@
             </div>
         </form>
     </div>
+
+
 
 
 {% endblock %}

@@ -1,10 +1,20 @@
 from flask_wtf import FlaskForm, CSRFProtect
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, FloatField
+from wtforms import SelectField, StringField, PasswordField, SubmitField, BooleanField, FloatField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional
-from flaskblog.models import User, Post
+from flaskblog.models import User, Post, CATEGORIES
 from flask_login import current_user
 
+#categories of posts
+CATEGORIES = [
+    ('food', 'Food'),
+    ('electronics', 'Electronics'),
+    ('clothing', 'Clothing'),
+    ('books', 'Books'),
+    ('beauty_service', 'Beauty_service'),
+    ('cleaning', 'Cleaning'),
+    ('general', 'General')
+]
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -65,10 +75,11 @@ class UpdateAccountForm(FlaskForm):
                 raise ValidationError('Whatsapp number already registered')
 
 class PostForm(FlaskForm):
-    title = StringField('Title', validators=[DataRequired(), Length(max=100)])
-    content = StringField('Content', validators=[DataRequired()])
+    title = StringField('Title', validators=[DataRequired()])
+    content = TextAreaField('Content', validators=[DataRequired()])
     price = StringField('Price', validators=[DataRequired()])
-    image = FileField('Product Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
+    category = SelectField('Category', choices=CATEGORIES, validators=[DataRequired()])
+    image = FileField('Upload Product Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
     submit = SubmitField('Post')
 
 class PaymentSettingsForm(FlaskForm):
@@ -76,3 +87,11 @@ class PaymentSettingsForm(FlaskForm):
     bank_name = StringField('Bank Name', validators=[DataRequired(), Length(max=100)])
     phone_for_payment = StringField('Mobile Money Number', validators=[DataRequired(), Length(max=20)])
     submit = SubmitField('Save Payment Settings')
+
+class UpdatePostForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    content = TextAreaField('Content', validators=[DataRequired()])
+    price = StringField('Price', validators=[DataRequired()])
+    category = SelectField('Category', choices=CATEGORIES, validators=[DataRequired()])
+    image = FileField('Upload Product Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
+    submit = SubmitField('Post')
