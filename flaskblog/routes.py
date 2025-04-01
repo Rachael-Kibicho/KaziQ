@@ -18,12 +18,13 @@ from requests_oauthlib import OAuth1
 import requests
 import logging
 import pdfkit
+
+
+
 config = pdfkit.configuration(
     wkhtmltopdf=r'C:/Users/pc/Downloads/wkhtmltox-0.12.6-1.msvc2015-win64.exe'
 )
-def admin_required():
-    if not current_user.is_authenticated or not current_user.is_admin:
-        abort(403)
+
 
 
 # For payments commission:
@@ -408,17 +409,23 @@ def transaction_details(transaction_id):
 #Report for registered businsesses
 @app.route('/report/registered_businesses')
 @login_required
+
 def registered_businesses_report():
-    admin_required()  # Restrict access to admins
+    if not current_user.is_authenticated or not current_user.is_admin:
+        flash("You are not authorized to access this page", "warning")
+        return redirect(url_for('home'))
     users = User.query.all()
     return render_template('registered_business_report.html', users=users)
 
 #Report for messaging activity
 @app.route('/report/chat_activity')
 @login_required
+
 def chat_activity_report():
-    if not current_user.is_authenticated or not current_user.is_admin:  # Restrict access to admins
-        abort(403)
+    if not current_user.is_authenticated or not current_user.is_admin:
+        flash("You are not authorized to access this page", "warning")
+        return redirect(url_for('home'))
+
 
     # Fetch total messages sent by each user
     messages_report = db.session.query(
@@ -440,8 +447,9 @@ def chat_activity_report():
 @app.route('/report/cart_activity')
 @login_required
 def cart_activity_report():
-    if not current_user.is_authenticated or not current_user.is_admin:  # Restrict access to admins
-        abort(403)
+    if not current_user.is_authenticated or not current_user.is_admin:
+        flash("You are not authorized to access this page", "warning")
+        return redirect(url_for('home'))
 
     # Total number of items in carts
     total_items = db.session.query(db.func.count(CartItem.id)).scalar()
@@ -641,7 +649,7 @@ def initiate_payment():
             "currency": "KES",
             "description": f"Order from {user.username}",
             "callback_url": url_for('payment_callback', _external=True),
-            "response_url": url_for('payment_complete', _external=True),
+            "response_url": url_for('home', _external=True),
             "notification_id": "0090e9da-9801-4e45-8e16-dbfdbfb751a5",
             "billing_address": {
                 "email_address": user.email,
@@ -806,16 +814,16 @@ def generate_sales_report(start_date=None, end_date=None):
     if not transactions:
         return "No sales data found for the given date range."
 
-    report = "Receipt\n"
+    report = "Sellers' Sales\n"
     report += "============\n"
     total_revenue = 0
 
     for transaction in transactions:
         report += f"Order ID: {transaction.id}\n"
-        report += f"Date: {transaction.date_created.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        report += f"Date: {transaction.date_created.strftime('%H:%M:%S')}\n"
         report += f"Buyer: {buyer.username}\n"
-        report += f"Total Amount: ${transaction.total_amount:.2f}\n"
-        report += f"Platform Fee: ${transaction.platform_fee:.2f}\n"
+        report += f"Total Amount: sh.{transaction.total_amount:.2f}\n"
+        report += f"Platform Fee: sh.{transaction.platform_fee:.2f}\n"
         report += "Items:\n"
         for item in transaction.items:
             post = Post.query.get(item.post_id)
@@ -891,7 +899,7 @@ def generate_receipt(order_id):
 
     except Exception as e:
         logging.error(f"PDF generation error: {e}", exc_info=True)
-        flash("Here is your generated sales report", "success")
+        flash("Your generated sales report ready", "success")
         return redirect(url_for('home'))
 
 # Then add routes for generating reports

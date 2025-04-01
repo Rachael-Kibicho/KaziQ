@@ -30,7 +30,7 @@
           <p class="post-price">Charging at only sh. {{ posts.price }}</p>
           <a href="{{ url_for('add_to_cart', post_id=posts.id) }}" class="btn btn-primary">Add to Cart</a>
           {% if current_user == posts.author %}
-            <a href="{{ url_for('update_posts', post_id=posts.id) }}">Edit</a>
+            <a href="{{ url_for('update_posts', post_id=posts.id) }}"class="btn btn-primary">Edit</a>
             <form action="{{ url_for('delete_post', post_id=posts.id) }}" method="POST" style="display:inline;">
                 <button type="submit" onclick="return confirm('Are you sure you want to delete this post?')" class="btn btn-danger">
                     Delete
