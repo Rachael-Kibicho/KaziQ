@@ -7,6 +7,7 @@ from flask_login import LoginManager
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from engineio.async_drivers import gevent
+from flask_mail import Mail
 
 
 from dotenv import load_dotenv
@@ -37,6 +38,13 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
+
+app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER', 'rachaelkibicho@gmail.com')
+app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASS', 'ytenknfxwadiiaqb' )
+mail = Mail(app)
 
 # CORS Configuration
 CORS(app, origins=["http://localhost:5000"], supports_credentials=True)
