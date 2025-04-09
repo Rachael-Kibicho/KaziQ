@@ -431,14 +431,15 @@ def add_to_cart(post_id):
         cart_item.quantity += 1
     else:
         cart_item = CartItem(user_id=current_user.id, post_id=post.id)
-        db.session.add(cart_item)
-
+    db.session.add(cart_item)
     db.session.commit()
+
+    # Store cart items' data in session
+    session['cart_items'] = json.dumps([{'cart_item_id': ci.id, 'post_id': ci.post_id, 'quantity': ci.quantity} for ci in CartItem.query.filter_by(user_id=current_user.id).all()])
 
     # Clear existing tracking ID when cart changes
     session.pop('current_tracking_id', None)
     session.pop('current_cart_signature', None)
-
     flash(f"Added '{post.title}!' to your cart!", "success")
     return redirect(url_for('view_cart', post_id=post.id))
 
@@ -476,7 +477,6 @@ def transaction_details(transaction_id):
     transaction_items = TransactionItem.query.filter_by(transaction_id=transaction_id).all()
     return render_template('transaction_details.html', transaction=transaction, transaction_items=transaction_items)
 
-#-----RECEIPT SECTION--------
 
 
 # Report generation routes
@@ -537,29 +537,7 @@ def cart_activity_report():
 
     return render_template('cart_activity_report.html', total_items=total_items, unique_users=unique_users, total_quantity=total_quantity)
 
-#-----SALES REPORT SECTION--------
-@app.route('/report/sales')
-@login_required
-def sales_report():
-     admin_required()
 
-     #Fetch all transactions
-     transactions = Transaction.query.all()
-
-     #Prepare data for the template
-     sales_data = []
-     total_revenue = 0
-
-     for transaction in transactions:
-          total_revenue += transaction.total_amount
-          sales_data.append({
-               'transaction_id': transaction.id,
-               'user': transaction.buyer_id,
-               'amount': transaction.total_amount,
-               'date_created': transaction.date_created,
-          })
-
-     return render_template('sales_report.html', sales_data=sales_data, total_revenue=total_revenue)
 
 # Pythoneer
 # ======== PesaPal Service Class ========
@@ -768,147 +746,89 @@ def payment_complete():
 
 @app.route('/payment_callback', methods=['GET', 'POST'])
 def payment_callback():
-        try:
-            # Debug: Check session contents
-            current_app.logger.info(f"Session data: {session}")
-
-            # Verify required session keys exist
-            tracking_id = session.get('pesapal_tracking_id')
-            order_id = session.get('order_id')
-            total_amount = session.get('total_amount')
-
-            if not all([tracking_id, order_id, total_amount]):
-                current_app.logger.error("Missing session data")
-                flash("Session data not found", "danger")
-                return redirect(url_for('view_cart'))
-
-            # Calculate platform fee (10% in this example)
-            PLATFORM_FEE_PERCENTAGE = 0.10
-            platform_fee = round(total_amount * PLATFORM_FEE_PERCENTAGE, 2)
-
-            # Try to find existing transaction
-            transaction = Transaction.query.filter_by(order_id=order_id).first()
-
-            if not transaction:
-                # Create new transaction with all required fields
-                transaction = Transaction(
-                    order_id=order_id,
-                    tracking_id=tracking_id,
-                    buyer_id=current_user.id,
-                    total_amount=total_amount,
-                    platform_fee=platform_fee,
-                    status='pending',
-                    date_created=datetime.utcnow()
-                )
-                db.session.add(transaction)
-                db.session.commit()
-
-            # Process payment status
-            pesapal = PesaPal()
-            status_response = pesapal.check_transaction_status(tracking_id)
-            payment_status = status_response.get('payment_status_description', 'pending').lower()
-
-            # Update transaction
-            transaction.status = payment_status
-
-            if payment_status == 'completed':
-                if not order_id:
-                    flash("Order not found", "danger")
-                    return redirect(url_for('home'))
-
-                # Redirect to receipt page
-                return redirect(url_for('generate_receipt', order_id=order_id))
-
-
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Callback error: {str(e)}", exc_info=True)
-            return jsonify({
-                "status": "error",
-                "message": "Payment processing failed",
-                "error": str(e)
-            }), 500
-
-
-@app.route('/checkout')
-@login_required
-def checkout():
     try:
-        # Get current cart items
-        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+        # Debug: Check session contents
+        current_app.logger.info(f"Session data: {session}")
 
-        if not cart_items:
-            flash('Your cart is empty!', 'warning')
-            current_app.logger.warning("Cart is empty. Redirecting to view_cart.")
+        # Verify required session keys exist
+        tracking_id = session.get('pesapal_tracking_id')
+        order_id = session.get('order_id')
+        total_amount = session.get('total_amount')
+        cart_items_data = json.loads(session.get('cart_items', '[]'))
+
+        if not all([tracking_id, order_id, total_amount, cart_items_data]):
+            current_app.logger.error("Missing session data")
+            flash("Session data not found", "danger")
             return redirect(url_for('view_cart'))
 
-        # Calculate total price and create a unique cart signature
-        total_price = sum(
-            int(Post.query.get_or_404(item.post_id).price) * item.quantity
-            for item in cart_items
+        # Calculate platform fee (10% in this example)
+        PLATFORM_FEE_PERCENTAGE = 0.10
+        platform_fee = round(total_amount * PLATFORM_FEE_PERCENTAGE, 2)
+
+        # Create new transaction with all required fields
+        transaction = Transaction(
+            order_id=order_id,
+            tracking_id=tracking_id,
+            buyer_id=current_user.id,
+            total_amount=total_amount,
+            platform_fee=platform_fee,
+            status='pending',
+            date_created=datetime.utcnow()
         )
-        current_app.logger.info(f"Total price calculated: {total_price}")
+        db.session.add(transaction)
+        db.session.commit()
 
-        # Generate a cart hash based on items and quantities
-        cart_signature = "-".join([
-            f"{item.post_id}:{item.quantity}" for item in sorted(cart_items, key=lambda x: x.post_id)
-        ])
-        cart_hash = hashlib.md5(cart_signature.encode('utf-8')).hexdigest()
+        # Log transaction creation
+        current_app.logger.info(f"Transaction created: {transaction.id}")
 
-        # Check if the cart is already being processed
-        if 'current_tracking_id' in session and 'current_cart_signature' in session:
-            if session['current_cart_signature'] == cart_hash:
-                flash('Payment is already in progress. Please wait for the payment to complete or cancel the current payment.', 'info')
-                return redirect(url_for('view_cart'))
+        # Now create transaction items
+        for item_data in cart_items_data:
+            # Fetch the CartItem object
+            cart_item = CartItem.query.get(item_data['cart_item_id'])
+            if cart_item:
+                transaction_item = TransactionItem(
+                    transaction_id=transaction.id,
+                    cart_item_id=cart_item.id,  # This is crucial!
+                    post_id=cart_item.post_id,
+                    seller_id=cart_item.post.author.id,
+                    quantity=cart_item.quantity,
+                    price=float(cart_item.post.price),
+                    seller_amount=float(cart_item.post.price) * (1 - PLATFORM_FEE_PERCENTAGE),
+                )
+                db.session.add(transaction_item)
+                # Delete the cart item
+                db.session.delete(cart_item)
+            else:
+                current_app.logger.error(f"Cart item not found: {item_data['cart_item_id']}")
 
-        # Store tracking ID and cart signature in session to track the current payment process
-        session['current_tracking_id'] = str(uuid.uuid4())  # Assign a tracking ID
-        session['current_cart_signature'] = cart_hash
-        session['total_amount'] = total_price  # Store total amount
+        db.session.commit()
+        current_app.logger.info(f"Transaction items added for transaction {transaction.id}")
 
-        return redirect(url_for('initiate_payment'))
+        # Clear the cart
+        session['cart_items'] = []
+
+        # Process payment status
+        pesapal = PesaPal()
+        status_response = pesapal.check_transaction_status(tracking_id)
+        payment_status = status_response.get('payment_status_description', 'pending').lower()
+
+        # Update transaction
+        transaction.status = payment_status
+
+        if payment_status == 'completed':
+            flash("Payment completed, enjoy your purchase!", "success")
+        else:
+            flash("Payment pending, we'll let you know the status shortly.", "info")
+        return redirect(url_for('home'))
 
     except Exception as e:
-        flash(f'Error during checkout: {str(e)}', 'error')
-        return redirect(url_for('view_cart'))
-
-
-def generate_sales_report(start_date=None, end_date=None):
-    """
-    Generates a sales report with transaction details.
-    """
-    query = Transaction.query
-    if start_date:
-        query = query.filter(Transaction.date_created >= start_date)
-    if end_date:
-        query = query.filter(Transaction.date_created <= end_date)
-    transactions = query.all()
-
-    buyer = User.query.filter(Transaction.buyer_id==current_user.id).first()
-
-    if not transactions:
-        return "No sales data found for the given date range."
-
-    report = "Sellers' Sales\n"
-    report += "============\n"
-    total_revenue = 0
-
-    for transaction in transactions:
-        report += f"Order ID: {transaction.id}\n"
-        report += f"Date: {transaction.date_created.strftime('%H:%M:%S')}\n"
-        report += f"Buyer: {buyer.username}\n"
-        report += f"Total Amount: sh.{transaction.total_amount:.2f}\n"
-        report += f"Platform Fee: sh.{transaction.platform_fee:.2f}\n"
-        report += "Items:\n"
-        for item in transaction.items:
-            post = Post.query.get(item.post_id)
-            report += f"  - {post.title} (x{item.quantity}) - Price: ${item.price:.2f}\n"
-        report += "---\n"
-        total_revenue += transaction.total_amount
-
-    report += f"\nTotal Revenue: ${total_revenue:.2f}\n"
-    return report
-
+        db.session.rollback()
+        current_app.logger.error(f"Callback error: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": "Payment processing failed",
+            "error": str(e)
+        }), 500
 
 @app.route('/generate_sales_report', methods=['GET'], endpoint='sales_report_route')
 @login_required
@@ -931,139 +851,71 @@ def generate_sales_report_route():
     report = generate_sales_report(start_date, end_date)
     return make_response(report, {'Content-Type': 'text/plain'})
 
-
-@app.route('/receipt/<order_id>', methods=['GET'])
-def generate_receipt(order_id):
-    try:
-        order = Transaction.query.filter_by(order_id=order_id).first()
-        print(f"Order items: {order.items}")  # Verify items exist
-        for item in order.items:
-            print(f"Item cart_item: {item.cart_item.post.title}")  # Verify relationship works
-
-        html = render_template('receipt.html', order=order)
-        print("Rendered HTML:", html[:200])  # Check for errors
-
-        # Create receipts folder if missing
-        receipts_dir = os.path.join(app.root_path, 'receipts')
-        if not os.path.exists(receipts_dir):
-            os.makedirs(receipts_dir)
-
-        # Generate PDF
-        pdf_path = os.path.join(receipts_dir, f'{order_id}.pdf')
-        pdfkit.from_string(
-            html,
-            pdf_path,
-            configuration=config,
-            options={
-                'page-size': 'A4',
-                'margin-top': '0.75in',
-                'margin-right': '0.75in',
-                'margin-bottom': '0.75in',
-                'margin-left': '0.75in',
-                'encoding': "UTF-8",
-                'no-outline': None
-            }
-        )
-
-        # Return PDF as download
-        return send_file(
-            pdf_path,
-            as_attachment=True,
-            attachment_filename=f'receipt_{order_id}.pdf'
-        )
-
-    except Exception as e:
-        logging.error(f"PDF generation error: {e}", exc_info=True)
-        flash("Your generated sales report ready", "success")
-        return redirect(url_for('home'))
-
-# Then add routes for generating reports
-@app.route("/seller/reports", methods=["GET"])
-@login_required
-def seller_reports():
-    if not current_user.is_seller:  # Add this field to your User model
-        abort(403)
-    sales_count = TransactionItem.query.filter_by(seller_id=current_user.id).count()
-    total_revenue = current_user.total_sales or 0
-    available_balance = current_user.account_balance or 0
-
-    # Get recent sales
-    recent_sales = db.session.query(
-        TransactionItem, Post, User
-    ).join(
-        Post, TransactionItem.post_id == Post.id
-    ).join(
-        Transaction, TransactionItem.transaction_id == Transaction.id
-    ).join(
-        User, Transaction.buyer_id == User.id
-    ).filter(
-        TransactionItem.seller_id == current_user.id
-    ).order_by(
-        Transaction.date_created.desc()
-    ).limit(10).all()
-
-    # Get pending disbursements
-    pending_amount = db.session.query(
-        db.func.sum(TransactionItem.seller_amount)
-    ).filter(
-        TransactionItem.seller_id == current_user.id,
-        TransactionItem.is_disbursed == False
-    ).scalar() or 0
-
-    return render_template(
-        'seller_dashboard.html',
-        sales_count=sales_count,
-        total_revenue=total_revenue,
-        available_balance=available_balance,
-        pending_amount=pending_amount,
-        recent_sales=recent_sales
-    )
-
-# Add Jinja2 Filter to Format Currency
-@app.template_filter()
-def format_currency(value):
-    """Format a numeric value as currency."""
-    return f'{value:,.2f} KES'
-
-
-# Route to trigger receipt generation
-@app.route("/receipt_test", methods=["GET"])
-@login_required
-def generate_receipt_page():
-     transaction = Transaction.query.first()  # Fetch the first transaction
-     if transaction:
-        html = generate_receipt(transaction)
-        return html
-     else:
-        return "No transactions available to generate a receipt."
-
-@app.route('/sales_report', methods=['GET'], endpoint='seller_sales_report')
+# Keep this route for displaying sales reports in a template
+from datetime import datetime
+@app.route('/report/sales')
 @login_required
 def sales_report():
     try:
-        # Fetch all users who have sold products
-        sellers = User.query.join(TransactionItem).filter(
-            TransactionItem.seller_id == User.id
-        ).distinct().all()
+        # Fetch all transactions
+        transactions = Transaction.query.all()
 
-        # Generate sales data for each seller
+        # Prepare data for the template
         sales_data = []
-        for seller in sellers:
-            total_sales = TransactionItem.query.filter_by(seller_id=seller.id).with_entities(
-                db.func.sum(TransactionItem.seller_amount).label('total_sales')
-            ).scalar()
-            sales_data.append({
-                'seller': seller.username,
-                'total_sales': total_sales or 0.0,
-                'last_sale': TransactionItem.query.filter_by(seller_id=seller.id)
-                    .order_by(TransactionItem.disbursement_date.desc())
-                    .first().disbursement_date if total_sales else None
-            })
+        total_revenue = 0
 
-        # Render the report template
-        return render_template('sales_report.html', sales_data=sales_data)
+        for transaction in transactions:
+            # Iterate through transaction items to get seller info
+            for item in transaction.items:  # Access transaction items
+                total_revenue += transaction.total_amount  # Correct total revenue calculation
+                sales_data.append({
+                    'seller': item.seller.username,  # Access seller's username through the relationship
+                    'total_sales': transaction.total_amount,  # Correct Calculation
+                    'last_sale': transaction.date_created.strftime("%Y-%m-%d %H:%M:%S"),
+                })
+
+        return render_template(
+            'sales_report.html',
+            sales_data=sales_data,
+            total_revenue=total_revenue
+        )
+    except Exception as e:
+        flash(f"Failed to generate sales report: {str(e)}", "danger")
+        return redirect(url_for('home'))
+
+
+@app.route('/checkout')
+@login_required
+def checkout():
+    try:
+        # Get current cart items from database
+        cart_items = CartItem.query.filter_by(user_id=current_user.id).all()
+
+        if not cart_items:
+            flash('Your cart is empty!', 'warning')
+            current_app.logger.warning("Cart is empty. Redirecting to view_cart.")
+            return redirect(url_for('view_cart'))
+
+        # Calculate total price
+        total_price = sum(
+            int(Post.query.get_or_404(item.post_id).price) * item.quantity
+            for item in cart_items
+        )
+        current_app.logger.info(f"Total price calculated: {total_price}")
+
+        # Store cart items' data in session
+        session['cart_items'] = json.dumps([{'cart_item_id': ci.id, 'post_id': ci.post_id, 'quantity': ci.quantity} for ci in cart_items])
+
+        # Generate a unique order ID
+        order_id = str(uuid.uuid4())
+
+        # Store order ID and total amount in session
+        session['order_id'] = order_id
+        session['total_amount'] = total_price
+
+        # Redirect to payment initiation
+        return redirect(url_for('initiate_payment'))
 
     except Exception as e:
-        logging.error(f"Sales report error: {e}")
-        flash("Failed to generate sales report", "danger")
-        return redirect(url_for('home'))
+        flash(f'Error during checkout: {str(e)}', 'error')
+        return redirect(url_for('view_cart'))

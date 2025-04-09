@@ -1,19 +1,30 @@
-{% extends "layout.html" %}
-{% block content %}
-<h1>Sales Report</h1>
-
-<table class="sales-report">
-    <tr>
-        <th>Seller</th>
-        <th>Total Sales</th>
-        <th>Last Sale Date</th>
-    </tr>
-    {% for entry in sales_data %}
-    <tr>
-        <td>{{ entry.seller }}</td>
-        <td>{{ entry.total_sales | format_currency }}</td>
-        <td>{{ entry.last_sale | format_datetime }}</td>
-    </tr>
-    {% endfor %}
-</table>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Report</title>
+</head>
+<body>
+    <h1>Sales Report</h1>
+    <p>Total Revenue: {{ total_revenue }}</p>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Seller</th>
+                <th>Total Sales</th>
+                <th>Last Sale Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sale in sales_data %}
+                <tr>
+                    <td>{{ sale.seller }}</td>
+                    <td>{{ sale.total_sales }}</td>
+                    <td>{{ sale.last_sale }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
