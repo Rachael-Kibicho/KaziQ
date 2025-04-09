@@ -77,6 +77,7 @@ class UpdateAccountForm(FlaskForm):
 class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
+    unit = StringField('Unit')
     price = StringField('Price', validators=[DataRequired()])
     category = SelectField('Category', choices=CATEGORIES, validators=[DataRequired()])
     image = FileField('Upload Product Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])
@@ -91,6 +92,7 @@ class PaymentSettingsForm(FlaskForm):
 class UpdatePostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
+    unit = StringField('Unit')
     price = StringField('Price', validators=[DataRequired()])
     category = SelectField('Category', choices=CATEGORIES, validators=[DataRequired()])
     image = FileField('Upload Product Image', validators=[FileAllowed(['jpg', 'png', 'jpeg'])])

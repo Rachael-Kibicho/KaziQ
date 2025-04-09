@@ -9,6 +9,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Your KaziQ website description">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='service-client.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='service-client.png') }}">
 
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -40,7 +42,11 @@
     <header class="site-header">
         <nav class="navbar navbar-expand-md" id="navbar">
             <div class="container">
-                <a class="navbar-brand" href="/">KaziQ</a>
+                <a class="navbar-brand" href="/">
+                    <img src="{{ url_for('static', filename='service-client.png') }}" alt="KaziQ Logo" class="navbar-logo">
+                    KaziQ
+
+                </a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggle" aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>

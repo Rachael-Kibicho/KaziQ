@@ -159,6 +159,7 @@ def new_post():
 
         post = Post(title=form.title.data,
                     content=form.content.data,
+                    unit=form.unit.data,
                     price=form.price.data,
                     author=current_user,
                     image_file=image_file,
@@ -200,6 +201,7 @@ def update_posts(post_id):
     if form.validate_on_submit():
         post.title = form.title.data
         post.content = form.content.data
+        post.unit = form.unit.data
         post.price = form.price.data
         post.category = form.category.data
 
@@ -224,18 +226,44 @@ def update_posts(post_id):
                            legend='Update Post',
                            post_id=post.id)  # Pass post_id explicitly
 
+@app.route('/test_email')
+def test_email():
+    msg = Message(
+        'Test Email',
+        sender='hello.kaziq@gmail.com',
+        recipients=['rachaelkibicho@gmail.com']  # Replace with your email
+    )
+    msg.body = 'This is a test email sent from Flask-Mail.'
+    try:
+        mail.send(msg)
+        return 'Email sent successfully!'
+    except Exception as e:
+        return f'Failed to send email: {e}'
+
+
+from smtplib import SMTPAuthenticationError, SMTPException
 
 def send_reset_email(user):
     token = user.get_reset_token()
+    print(f"Generated token: {token}")  # Debugging
     msg = Message('Password Reset Request',
-                  sender='rachaelkibicho@gmail.com',
+                  sender=app.config['MAIL_USERNAME'],
                   recipients=[user.email])
     msg.body = f'''To reset your password, visit the following link:
 {url_for('reset_token', token=token, _external=True)}
 
 If you did not make this request then simply ignore this email and no changes will be made.
 '''
-    mail.send(msg)
+    try:
+        mail.send(msg)
+        flash('A reset email has been sent if the address exists.', 'info')
+    except SMTPAuthenticationError as e:
+        print(f"Authentication error: {e}")  # Debugging
+        flash('Email sending failed: Authentication error.', 'danger')
+    except SMTPException as e:
+        print(f"SMTP error: {e}")  # Debugging
+        flash(f'Failed to send email: {str(e)}', 'danger')
+
 
 
 @app.route("/reset_password", methods=['GET', 'POST'])
@@ -245,11 +273,13 @@ def reset_request():
     form = RequestResetForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
-        send_reset_email(user)
-        flash('An email has been sent with instructions to reset your password.', 'info')
+        if user:
+            send_reset_email(user)
+            flash('An email has been sent with instructions to reset your password.', 'info')
+        else:
+            flash('No account found with that email address.', 'warning')
         return redirect(url_for('login'))
     return render_template('reset_request.html', title='Reset Password', form=form)
-
 
 @app.route("/reset_password/<token>", methods=['GET', 'POST'])
 def reset_token(token):

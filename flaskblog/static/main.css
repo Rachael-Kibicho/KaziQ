@@ -490,6 +490,14 @@ body {
   cursor: pointer;
 }
 
+.navbar-logo {
+  height: 40px; /* Adjust the height of the logo */
+  width: auto; /* Maintain aspect ratio */
+  margin-right: 10px;/* Add spacing between the logo and other navbar items */
+  border-radius:50%;
+  margin-bottom:10px;
+}
+
 .send-button:hover {
   background-color: #0056b3;
 }
