@@ -8,6 +8,9 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from engineio.async_drivers import gevent
 from flask_mail import Mail
+from flaskblog.handlers import errors
+
+
 
 
 from dotenv import load_dotenv
@@ -45,6 +48,9 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('EMAIL_USER', 'hello.kaziq@gmail.com')
 app.config['MAIL_PASSWORD'] = os.environ.get('EMAIL_PASS', 'adasohzikwphsont')
 mail = Mail(app)
+
+#error handling
+app.register_blueprint(errors)
 
 # CORS Configuration
 CORS(app, origins=["http://localhost:5000"], supports_credentials=True)

@@ -78,7 +78,7 @@ body {
     color: #011638;
     width:100px;
     text-align:center;
-    font-size:12px;
+    font-size:13px;
 
   }
 
@@ -613,6 +613,15 @@ footer{
 .checkout-contain{
   border-radius:1em;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#error-page{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:900px;
+  flex-direction:column;
+
 }
 
 iframe{
