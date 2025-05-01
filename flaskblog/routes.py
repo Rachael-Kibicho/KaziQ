@@ -23,7 +23,7 @@ from flask_mail import Message
 
 
 config = pdfkit.configuration(
-    wkhtmltopdf=r'C:/Users/pc/Downloads/wkhtmltox-0.12.6-1.msvc2015-win64.exe'
+    wkhtmltopdf='/usr/local/bin/wkhtmltopdf'
 )
 
 
