@@ -17,14 +17,8 @@ from datetime import datetime
 from requests_oauthlib import OAuth1
 import requests
 import logging
-import pdfkit
+
 from flask_mail import Message
-
-
-
-config = pdfkit.configuration(
-    wkhtmltopdf='/usr/local/bin/wkhtmltopdf'
-)
 
 
 
